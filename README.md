@@ -8,10 +8,6 @@ Bienvenue dans l'équipe de **KTC Web** ! Ce document est votre point d'entrée 
 
 **KTC Web** est une plateforme web moderne conçue pour la **supervision, le monitoring et le pilotage à distance d'un parc de Guichets Automatiques Bancaires (ATMs)**. Elle permet aux administrateurs bancaires de visualiser en temps réel l'état du matériel (cassettes, imprimantes, coffres) et d'interagir avec les machines.
 
-⚠️ **Règle d'Or Absolue : L'approche "Database-First"**
-Notre application se branche sur une base de données industrielle KAL KTC préexistante et complexe (+120 tables). **Cette base est en production.**
-Il est **strictement interdit** de générer, créer ou exécuter des migrations Entity Framework Core (`Add-Migration`, `Update-Database`). Notre code backend a uniquement un rôle de *lecteur* et *d'acteur* métier, il ne gère pas le cycle de vie du schéma de la DB.
-
 ---
 
 ## 🏗️ L'Architecture Code (Le Comment)

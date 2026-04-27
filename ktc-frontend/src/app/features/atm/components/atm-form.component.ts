@@ -193,7 +193,13 @@ export class AtmFormComponent implements OnInit, OnDestroy {
   }
 
   cancel(): void {
-    this.router.navigate(['/admin/atms']);
+    if (this.isEdit() && this.editId()) {
+      // Si édition, retourner à la page détail (onglet Général)
+      this.router.navigate(['/admin/atms', this.editId(), 'general']);
+    } else {
+      // Si création, retourner à la liste
+      this.router.navigate(['/admin/atms']);
+    }
   }
 
   // ── Map Picker ─────────────────────────────────────────────────────────────

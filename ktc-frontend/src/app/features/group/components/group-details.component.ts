@@ -29,7 +29,7 @@ export class GroupDetailsComponent implements OnInit, OnChanges {
   loadingAtms       = signal(false);
   addSearch         = signal('');
   addingClientId    = signal<number | null>(null);
-  selectedClientIds = signal<Set<number>>(new Set()); // Multi-sélection
+  selectedClientIds = signal<Set<number>>(new Set()); // Multi-sï¿½lection
   isAddingBulk      = signal(false);
 
   // -- Computed ---------------------------------------------------------------
@@ -51,9 +51,9 @@ export class GroupDetailsComponent implements OnInit, OnChanges {
   });
 
   groupTypeLabel = computed(() => {
-    const labels: Record<number, string> = { 1: 'Tous les ATMs', 2: 'Manuel', 3: 'Schedulé', 4: 'Dynamique' };
+    const labels: Record<number, string> = { 1: 'Tous les ATMs', 2: 'Manuel', 3: 'Schedulï¿½', 4: 'Dynamique' };
     const t = this.groupDetails()?.groupTypeId;
-    return t ? (labels[t] ?? `Type ${t}`) : '—';
+    return t ? (labels[t] ?? `Type ${t}`) : 'ï¿½';
   });
 
   // -- Lifecycle --------------------------------------------------------------
@@ -182,6 +182,6 @@ export class GroupDetailsComponent implements OnInit, OnChanges {
   }
 
   connectableLabel(val: number): string {
-    return ['—', 'Non connectable', 'IP Statique', 'IP Dynamique'][val] ?? String(val);
+    return ['ï¿½', 'Non connectable', 'IP Statique', 'IP Dynamique'][val] ?? String(val);
   }
 }

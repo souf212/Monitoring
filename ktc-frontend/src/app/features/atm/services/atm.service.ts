@@ -1,5 +1,5 @@
 export * from '../models/atm.models';
-import { ClientAtm, BusinessDto, BusinessDetailsDto, BranchDto, RegionDto, RegionDetailsDto, HardwareTypeDto, CreateOrUpdateAtmRequest, CreateBranchRequest, CreateBusinessRequest, CreateRegionRequest, AtmComponentStatusDto, AtmAssetHistoryDto } from '../models/atm.models';
+import { ClientAtm, BusinessDto, BusinessDetailsDto, BranchDto, RegionDto, RegionDetailsDto, HardwareTypeDto, CreateOrUpdateAtmRequest, CreateBranchRequest, CreateBusinessRequest, CreateRegionRequest, AtmComponentStatusDto, AtmAssetHistoryDto, RegionListDto, LastClientContactDto, AtmSoftwareInfoDto, AtmCertificateDto, AtmTicketDto } from '../models/atm.models';
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
@@ -89,10 +89,9 @@ export class AtmService {
 
   // ── Regions ───────────────────────────────────────────────────────────────
 
-  getRegions(): Observable<RegionDto[]> {
-    return this.http.get<RegionDto[]>(`${this.BASE}/regions`);
-  }
-
+getRegions(): Observable<RegionListDto[]> {
+  return this.http.get<RegionListDto[]>(`${this.BASE}/regions`);
+}
   getRegionById(id: number): Observable<RegionDetailsDto> {
     return this.http.get<RegionDetailsDto>(`${this.BASE}/regions/${id}`);
   }
@@ -117,6 +116,29 @@ export class AtmService {
 
   getHardwareTypesByBusiness(businessId: number): Observable<HardwareTypeDto[]> {
     return this.http.get<HardwareTypeDto[]>(`${this.BASE}/businesses/${businessId}/hardwaretypes`);
+  }
+
+  // ── Last Client Contact ───────────────────────────────────────────────────
+
+  getLastClientContact(clientId: number): Observable<LastClientContactDto> {
+    return this.http.get<LastClientContactDto>(`${this.BASE}/clients/${clientId}/lastcontact`);
+  }
+
+  getAtmSoftwareInfo(clientId: number): Observable<AtmSoftwareInfoDto[]> {
+    return this.http.get<AtmSoftwareInfoDto[]>(`${this.BASE}/clients/${clientId}/softwareinfo`);
+  }
+
+  getAtmCertificates(clientId: number): Observable<AtmCertificateDto[]> {
+    return this.http.get<AtmCertificateDto[]>(`${this.BASE}/clients/${clientId}/certificates`);
+  }
+
+  getAtmTickets(clientId: number, days: number = 14, statusFilter: string = 'All'): Observable<AtmTicketDto[]> {
+    return this.http.get<AtmTicketDto[]>(`${this.BASE}/clients/${clientId}/tickets`, {
+      params: {
+        days: days.toString(),
+        statusFilter: statusFilter
+      }
+    });
   }
 }
 

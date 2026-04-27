@@ -43,23 +43,30 @@ namespace KtcWeb.API.Controllers
         }
 
         // ====================== REGION ======================
-        [HttpGet("regions")]
-        public async Task<ActionResult<List<RegionDto>>> GetAllRegions()
-        {
-            try
-            {
-                var regions = await _context.Database.SqlQueryRaw<RegionDto>(@"
-                    SELECT region_id AS RegionId, regionname AS RegionName, displayID AS DisplayId 
-                    FROM dbo.Regions ORDER BY regionname").ToListAsync();
+[HttpGet("regions")]
+public async Task<ActionResult<List<RegionListDto>>> GetAllRegions()
+{
+    try
+    {
+        var regions = await _context.Database.SqlQueryRaw<RegionListDto>(@"
+            SELECT
+                r.region_id              AS RegionId,
+                r.regionname             AS RegionName,
+                ISNULL(r.displayID,'')   AS DisplayId,
+                r.region_level           AS RegionLevel,
+                r.parent_region_id       AS ParentRegionId,
+                ISNULL(b.businessname,'—') AS BusinessName
+            FROM dbo.Regions r
+            LEFT JOIN dbo.Businesses b ON b.business_id = r.business_id
+            ORDER BY r.regionname").ToListAsync();
 
-                return Ok(regions);
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { message = ex.Message });
-            }
-        }
-
+        return Ok(regions);
+    }
+    catch (Exception ex)
+    {
+        return BadRequest(new { message = ex.Message });
+    }
+}
         [HttpGet("regions/{id}")]
         public async Task<ActionResult<RegionDetailsDto>> GetRegionById(short id)
         {
@@ -626,6 +633,114 @@ public async Task<IActionResult> UpdateBranch(short id, [FromBody] UpdateBranchR
             catch (Exception ex)
             {
                 return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        [HttpGet("clients/{id}/lastcontact")]
+        public async Task<ActionResult<LastClientContactDto>> GetLastClientContact(int id)
+        {
+            try
+            {
+                var lastContact = await _atmRepository.GetLastClientContactAsync(id);
+                if (lastContact == null)
+                {
+                    return NotFound(new { message = "Aucun dernier contact trouvé pour cet ATM." });
+                }
+                return Ok(lastContact);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        [HttpGet("clients/{id}/softwareinfo")]
+        public async Task<ActionResult<List<AtmSoftwareInfoDto>>> GetAtmSoftwareInfo(int id)
+        {
+            try
+            {
+                var softwareInfo = await _atmRepository.GetAtmSoftwareInfoAsync(id);
+                return Ok(softwareInfo);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        [HttpGet("clients/{id}/certificates")]
+        public async Task<ActionResult<List<AtmCertificateDto>>> GetAtmCertificates(int id)
+        {
+            try
+            {
+                var certificates = await _atmRepository.GetAtmCertificatesAsync(id);
+                return Ok(certificates);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        [HttpGet("clients/{id}/tickets")]
+        public async Task<ActionResult<List<AtmTicketDto>>> GetAtmTickets(int id, [FromQuery] int days = 14, [FromQuery] string statusFilter = "All")
+        {
+            try
+            {
+                // Validate parameters
+                if (days < 1 || days > 365)
+                {
+                    days = 14;
+                }
+
+                if (!new[] { "All", "Open/Dispatched", "Closed" }.Contains(statusFilter))
+                {
+                    statusFilter = "All";
+                }
+
+                var tickets = await _atmRepository.GetAtmTicketsAsync(id, days, statusFilter);
+                return Ok(tickets);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = $"Erreur: {ex.Message}", details = ex.InnerException?.Message });
+            }
+        }
+
+        [HttpGet("clients/{id}/tickets-debug")]
+        public async Task<ActionResult> GetAtmTicketsDebug(int id)
+        {
+            try
+            {
+                // Test 1: Check if TroubleTickets table exists
+                var tableCheck = await _context.Database.SqlQueryRaw<dynamic>(@"
+                    SELECT TABLE_NAME 
+                    FROM INFORMATION_SCHEMA.TABLES 
+                    WHERE TABLE_NAME LIKE '%Ticket%' OR TABLE_NAME LIKE '%ticket%'").ToListAsync();
+
+                // Test 3: Get first few columns from TroubleTickets
+                var sampleColumns = await _context.Database.SqlQueryRaw<dynamic>(@"
+                    SELECT COLUMN_NAME 
+                    FROM INFORMATION_SCHEMA.COLUMNS 
+                    WHERE TABLE_NAME = 'TroubleTickets' 
+                    ORDER BY ORDINAL_POSITION").ToListAsync();
+
+                // Test 2: Try a simple first ticket query
+                var sampleTicket = await _context.Database.SqlQueryRaw<dynamic>(@"
+                    SELECT TOP 1 * FROM dbo.TroubleTickets WHERE client_id = {0}", id).FirstOrDefaultAsync();
+
+                return Ok(new
+                {
+                    tablesFound = tableCheck.Count,
+                    tables = tableCheck,
+                    columnCount = sampleColumns.Count,
+                    sampleColumns = sampleColumns.Take(10),
+                    firstTicketForClient = sampleTicket ?? "Aucun ticket trouvé"
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { error = ex.Message, innerError = ex.InnerException?.Message });
             }
         }
 

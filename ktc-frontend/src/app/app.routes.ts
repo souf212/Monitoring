@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 
+
 import { LoginComponent } from './features/auth/components/login.component';
 import { DashboardComponent } from './features/dashboard/components/dashboard.component';
 import { AdminLayoutComponent } from './features/admin/components/admin-layout.component';
@@ -18,6 +19,10 @@ import { RegionFormComponent } from './features/region/components/region-form.co
 import { BranchFormComponent } from './features/branch/components/branch-form.component';
 import { BranchListComponent } from './features/branch/components/branch-list.component';
 import { GroupFormComponent } from './features/group/components/group-form.component';
+import { AtmGeneralComponent } from './features/atm/components/atm-general.component';
+import { AtmSoftwareInfoComponent } from './features/atm/components/atm-software-info.component';
+import { AtmCertificatesComponent } from './features/atm/components/atm-certificates.component';
+import { AtmTicketsComponent } from './features/atm/components/atm-tickets.component';
 
 
 export const routes: Routes = [
@@ -40,14 +45,18 @@ export const routes: Routes = [
           { path: 'atms',           component: AtmListComponent },
           { path: 'atms/map',       component: AtmMapComponent },
           { path: 'atms/create',    component: AtmFormComponent },
+          { path: 'atms/:id/edit',  component: AtmFormComponent },    // ← Edit route (hors du detail layout)
           {
             path: 'atms/:id',
             component: AtmDetailLayoutComponent,
             children: [
               { path: '', redirectTo: 'general', pathMatch: 'full' },
-              { path: 'general', component: AtmFormComponent },
+              { path: 'general', component: AtmGeneralComponent },
               { path: 'status', component: AtmStatusComponent },
-              { path: 'asset-history', component: AtmAssetHistoryComponent }
+              { path: 'asset-history', component: AtmAssetHistoryComponent },
+              { path: 'software-info', component: AtmSoftwareInfoComponent },
+              { path: 'certificates', component: AtmCertificatesComponent },
+              { path: 'tickets', component: AtmTicketsComponent }
             ]
           },
 

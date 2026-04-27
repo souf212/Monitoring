@@ -166,6 +166,45 @@
   box-shadow: 0 0 5px var(--success-500);
 }
 
+/* ── Badges ────────────────────────────────────────────────────────────── */
+.badge-level {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 99px;
+  font-size: 11px;
+  font-weight: 700;
+  background: var(--brand-50);
+  color: var(--brand-500);
+  border: 1px solid var(--brand-100);
+}
+
+.parent-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 99px;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: monospace;
+  background: var(--surface-2);
+  color: var(--muted);
+  border: 1px solid var(--border);
+}
+
+.business-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 99px;
+  font-size: 11px;
+  font-weight: 700;
+  background: var(--success-50);
+  color: #166534;
+  border: 1px solid rgba(22, 163, 74, 0.25);
+}
+
+.muted-dash {
+  color: var(--muted);
+}
+
 /* ── Buttons ───────────────────────────────────────────────────────────── */
 .btn {
   padding: 8px 14px;

@@ -61,6 +61,14 @@ export interface HardwareTypeDto {
   canBeConfigured: boolean;
   canBeMonitored: boolean;
 }
+export interface RegionListDto {
+  regionId: number;
+  regionName: string;
+  displayId: string;
+  regionLevel: number;
+  parentRegionId: number;
+  businessName: string;
+}
 
 export interface CreateOrUpdateAtmRequest {
   clientName: string;
@@ -135,4 +143,59 @@ export interface AtmAssetHistoryDto {
   oldValue: string;
   newValue: string;
   comment: string;
+}
+
+export interface LastClientContactDto {
+  clientId: number;
+  timestmp?: string | null;           // ISO datetime
+  timeoffset: number;
+  lastMsgId: number;
+  lastMsgReply?: string | null;
+  nextMessageExpected?: string | null; // ISO datetime
+  msgRejectedInfo?: string | null;
+  msgQueueSize: number;
+  msgCreatedTs?: string | null;        // ISO datetime
+  replayFlag: boolean;
+  mutualAuth: boolean;
+}
+
+export interface AtmSoftwareInfoDto {
+  swId: number;
+  softwareName: string;
+  version: string;
+  installType: number;
+  installTypeLabel: string;
+  installDate: string;
+  complianceRulesCount: number;
+}
+
+export interface AtmCertificateDto {
+  certificateStore: string;
+  subjectName: string;
+  issuer: string;
+  friendlyName: string;
+  notBefore: string;
+  notAfter: string;
+  isPrivate: boolean;
+  firstSeen: string;
+  serialNumber: string;
+}
+
+export interface AtmTicketDto {
+  ticketId: number;
+  ticketType: string;
+  clientName: string;
+  created: string;
+  isClosed: boolean;
+  duration: string;
+  status: string;
+  errorId: number;
+  code: string;
+  errorText: string;
+  owner: string;
+  lastChangeBy: string;
+  lastChangeDate: string;
+  lastComment: string;
+  slaSummary: string;
+  dispatchedTo: string;
 }

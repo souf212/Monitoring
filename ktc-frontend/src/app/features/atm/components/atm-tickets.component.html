@@ -1,86 +1,105 @@
-<div class="atm-tickets-container">
+<div class="tickets-container">
+  <!-- Loading State -->
   @if (isLoading()) {
     <div class="loading-state">
       <span class="spinner"></span>
       <p>Chargement des tickets...</p>
     </div>
   } @else if (error()) {
+    <!-- Error State -->
     <div class="error-state">
       <p>{{ error() }}</p>
     </div>
   } @else {
-    <div class="toolbar-card">
-      <div class="filter-row">
-        <label>
-          Number of days of Tickets to show :
-          <input
-            type="number"
-            min="1"
-            [value]="daysFilter()"
-            (input)="setDays($event)"
+    <!-- Main Content -->
+    <div class="detail-panel full-width">
+      <!-- Filters Toolbar -->
+      <div class="filters-toolbar">
+        <div class="filter-group">
+          <label for="days-filter">Nombre de jours de Tickets à afficher :</label>
+          <input 
+            id="days-filter"
+            type="number" 
+            min="1" 
+            max="365" 
+            [(ngModel)]="daysFilterValue"
+            class="filter-input number-input"
+            placeholder="14"
           />
-        </label>
+        </div>
 
-        <label>
-          Ticket status filter :
-          <select [value]="statusFilter()" (change)="setStatus($event)">
-            <option value="Open/Dispatched">Open/Dispatched</option>
-            <option value="Closed">Closed</option>
-            <option value="All">All</option>
+        <div class="filter-group">
+          <label for="status-filter">Filtre de statut des tickets :</label>
+          <select 
+            id="status-filter"
+            [(ngModel)]="statusFilterValue"
+            class="filter-input select-input"
+          >
+            <option value="All">Tous</option>
+            <option value="Open/Dispatched">Ouverts/Dispensés</option>
+            <option value="Closed">Fermés</option>
           </select>
-        </label>
+        </div>
       </div>
-    </div>
 
-    <div class="table-container">
-      @if (tickets().length === 0) {
-        <div class="empty-state">Aucun ticket disponible pour cet ATM.</div>
-      } @else {
-        <table class="detail-table tickets-table">
-          <thead>
-            <tr>
-              <th>Ticket ID</th>
-              <th>Ticket Type</th>
-              <th>Client Name</th>
-              <th>Created</th>
-              <th>Closed</th>
-              <th>Duration</th>
-              <th>Status</th>
-              <th>Error ID</th>
-              <th>Code</th>
-              <th>Error Text</th>
-              <th>Owner</th>
-              <th>Last Change By</th>
-              <th>Last Change Date</th>
-              <th>Last Comment</th>
-              <th>SLA Summary</th>
-              <th>Dispatched To</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (ticket of tickets(); track ticket.ticketId) {
+      <!-- Title -->
+      <h3 class="panel-title">Tickets des Incidents</h3>
+
+      <!-- Data Grid / Table -->
+      <div class="table-container">
+        @if (displayedTickets().length === 0) {
+          <div class="empty-state">Aucun ticket disponible pour cet ATM.</div>
+        } @else {
+          <table class="detail-table tickets-table">
+            <thead>
               <tr>
-                <td>{{ ticket.ticketId }}</td>
-                <td>{{ ticket.ticketType || '-' }}</td>
-                <td>{{ ticket.clientName || '-' }}</td>
-                <td>{{ ticket.created ? (ticket.created | date:'dd/MM/yyyy HH:mm') : '-' }}</td>
-                <td>{{ ticket.closed ? (ticket.closed | date:'dd/MM/yyyy HH:mm') : '-' }}</td>
-                <td>{{ ticket.duration || '-' }}</td>
-                <td>{{ ticket.status || '-' }}</td>
-                <td>{{ ticket.errorId || '-' }}</td>
-                <td>{{ ticket.code || '-' }}</td>
-                <td>{{ ticket.errorText || '-' }}</td>
-                <td>{{ ticket.owner || '-' }}</td>
-                <td>{{ ticket.lastChangeBy || '-' }}</td>
-                <td>{{ ticket.lastChangeDate ? (ticket.lastChangeDate | date:'dd/MM/yyyy HH:mm') : '-' }}</td>
-                <td class="comment-col" [title]="ticket.lastComment">{{ ticket.lastComment || '-' }}</td>
-                <td>{{ ticket.slaSummary || '-' }}</td>
-                <td>{{ ticket.dispatchedTo || '-' }}</td>
+                <th class="col-ticket-id">Ticket ID</th>
+                <th class="col-ticket-type">Type Ticket</th>
+                <th class="col-client-name">Nom Client</th>
+                <th class="col-created">Créé le</th>
+                <th class="col-closed">Fermé</th>
+                <th class="col-duration">Durée</th>
+                <th class="col-status">Statut</th>
+                <th class="col-error-id">ID Erreur</th>
+                <th class="col-code">Code</th>
+                <th class="col-error-text">Texte de l'Erreur</th>
+                <th class="col-owner">Propriétaire</th>
+                <th class="col-last-change-by">Dernière Modif. par</th>
+                <th class="col-last-change-date">Dernière Modif. Date</th>
+                <th class="col-last-comment">Dernier Commentaire</th>
+                <th class="col-sla">Résumé SLA</th>
+                <th class="col-dispatched-to">Dispensé à</th>
               </tr>
-            }
-          </tbody>
-        </table>
-      }
+            </thead>
+            <tbody>
+              @for (ticket of displayedTickets(); track ticket.ticketId) {
+                <tr class="ticket-row">
+                  <td class="col-ticket-id">{{ ticket.ticketId }}</td>
+                  <td class="col-ticket-type">{{ displayValue(ticket.ticketType) }}</td>
+                  <td class="col-client-name">{{ displayValue(ticket.clientName) }}</td>
+                  <td class="col-created">{{ formatDate(ticket.created) }}</td>
+                  <td class="col-closed">{{ formatClosed(ticket.isClosed) }}</td>
+                  <td class="col-duration">{{ formatDuration(ticket.duration) }}</td>
+                  <td class="col-status">
+                    <span class="status-badge" [ngClass]="getStatusClass(ticket.status)">
+                      {{ ticket.status }}
+                    </span>
+                  </td>
+                  <td class="col-error-id">{{ ticket.errorId }}</td>
+                  <td class="col-code"><strong>{{ displayValue(ticket.code) }}</strong></td>
+                  <td class="col-error-text" [title]="ticket.errorText">{{ displayValue(ticket.errorText) }}</td>
+                  <td class="col-owner"><span class="badge-user">{{ displayValue(ticket.owner) }}</span></td>
+                  <td class="col-last-change-by">{{ displayValue(ticket.lastChangeBy) }}</td>
+                  <td class="col-last-change-date">{{ formatDate(ticket.lastChangeDate) }}</td>
+                  <td class="col-last-comment" [title]="ticket.lastComment">{{ displayValue(ticket.lastComment) }}</td>
+                  <td class="col-sla">{{ displayValue(ticket.slaSummary) }}</td>
+                  <td class="col-dispatched-to">{{ displayValue(ticket.dispatchedTo) }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        }
+      </div>
     </div>
   }
 </div>

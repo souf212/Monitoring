@@ -1,77 +1,145 @@
-import { Component, OnInit, effect, inject, signal } from '@angular/core';
+import { Component, Input, OnInit, inject, signal, computed, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { AtmService, AtmTicketDto } from '../services/atm.service';
 
 @Component({
   selector: 'app-atm-tickets',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FormsModule],
   templateUrl: './atm-tickets.component.html',
   styleUrls: ['./atm-tickets.component.css']
 })
 export class AtmTicketsComponent implements OnInit {
+  @Input() clientId?: number;
+
   private route = inject(ActivatedRoute);
   private atmService = inject(AtmService);
 
+  // ── State ──────────────────────────────────────────────────────────────
+  atmId = signal<number | null>(null);
   isLoading = signal(true);
   error = signal<string | null>(null);
+  
+  // Filter signals
+  daysFilter = signal(14);
+  statusFilter = signal('All');
+  
+  // Data signal
   tickets = signal<AtmTicketDto[]>([]);
 
-  daysFilter = signal(14);
-  statusFilter = signal('Open/Dispatched');
-  atmId = signal<number | null>(null);
+  // Computed values
+  displayedTickets = computed(() => {
+    return this.tickets();
+  });
 
-  constructor() {
-    effect(() => {
-      const id = this.atmId();
-      const days = this.daysFilter();
-      const status = this.statusFilter();
+  // Effect to reload tickets when filters or atmId change
+  private ticketsEffect = effect(() => {
+    const id = this.atmId();
+    // Access filter signals to create dependency
+    this.daysFilter();
+    this.statusFilter();
+    
+    if (id) {
+      this.loadTickets();
+    }
+  });
 
-      if (!id) {
-        return;
-      }
+  // Accessors for ngModel compatibility
+  get daysFilterValue(): number {
+    return this.daysFilter();
+  }
 
-      this.fetchTickets(id, days, status);
-    });
+  set daysFilterValue(value: number) {
+    this.daysFilter.set(value);
+  }
+
+  get statusFilterValue(): string {
+    return this.statusFilter();
+  }
+
+  set statusFilterValue(value: string) {
+    this.statusFilter.set(value);
   }
 
   ngOnInit(): void {
-    const idStr = this.route.snapshot.paramMap.get('id')
-      ?? this.route.parent?.snapshot.paramMap.get('id');
-
-    const id = idStr ? Number(idStr) : null;
-    if (!id) {
-      this.error.set("Aucun identifiant d'ATM fourni.");
-      this.isLoading.set(false);
-      return;
+    // Extract ATM ID from route
+    let idStr = this.route.snapshot.paramMap.get('id');
+    if (!idStr && this.route.parent) {
+      idStr = this.route.parent.snapshot.paramMap.get('id');
     }
 
-    this.atmId.set(id);
+    const finalId = this.clientId ?? (idStr ? Number(idStr) : null);
+    if (finalId) {
+      this.atmId.set(finalId);
+      // Effect will be triggered automatically by setting atmId
+    } else {
+      this.error.set("Aucun identifiant d'ATM fourni.");
+      this.isLoading.set(false);
+    }
   }
 
-  setDays(event: Event): void {
-    const value = Number((event.target as HTMLInputElement).value);
-    this.daysFilter.set(value > 0 ? value : 14);
-  }
+  loadTickets(): void {
+    const id = this.atmId();
+    if (!id) return;
 
-  setStatus(event: Event): void {
-    this.statusFilter.set((event.target as HTMLSelectElement).value);
-  }
-
-  private fetchTickets(id: number, days: number, status: string): void {
     this.isLoading.set(true);
     this.error.set(null);
 
-    this.atmService.getAtmTickets(id, days, status).subscribe({
+    this.atmService.getAtmTickets(id, this.daysFilter(), this.statusFilter()).subscribe({
       next: (data) => {
         this.tickets.set(data);
         this.isLoading.set(false);
       },
-      error: () => {
+      error: (err) => {
+        console.error('Erreur chargement tickets:', err);
         this.error.set("Erreur lors de la récupération des tickets.");
         this.isLoading.set(false);
       }
     });
+  }
+
+  // Helper to format duration
+  formatDuration(duration: string | null | undefined): string {
+    if (!duration) return '-';
+    return duration;
+  }
+
+  // Helper to display safe text values
+  displayValue(value: string | null | undefined): string {
+    if (!value || !value.trim()) return 'N/A';
+    return value;
+  }
+
+  // Helper to get status badge class
+  getStatusClass(status: string): string {
+    const statusLower = status?.toLowerCase() ?? '';
+    if (statusLower.includes('closed')) return 'status-closed';
+    if (statusLower.includes('dispatched')) return 'status-dispatched';
+    if (statusLower.includes('open')) return 'status-open';
+    return 'status-unknown';
+  }
+
+  // Helper to format date
+  formatDate(dateStr: string | null | undefined): string {
+    if (!dateStr) return '-';
+    try {
+      const date = new Date(dateStr);
+      return date.toLocaleDateString('fr-FR', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch {
+      return dateStr;
+    }
+  }
+
+  // Helper to format closed status
+  formatClosed(isClosed: boolean): string {
+    return isClosed ? '✓ Oui' : '-';
   }
 }

@@ -1,0 +1,128 @@
+<div class="page-wrapper">
+
+  <!-- ── Page header ─────────────────────────────────────────────────────── -->
+  <div class="page-head">
+    <div>
+      <h1 class="page-title">ATMs</h1>
+      <p class="page-subtitle">Gestion des distributeurs automatiques</p>
+    </div>
+    <div class="head-actions">
+      <button class="btn btn-secondary" (click)="goMap()">
+        <span class="btn-icon">🗺️</span> Vue Carte
+      </button>
+      <button class="btn btn-primary" (click)="goCreate()">
+        <span class="btn-icon">＋</span> Nouvel ATM
+      </button>
+    </div>
+  </div>
+
+  <!-- ── KPI strip ───────────────────────────────────────────────────────── -->
+  <div class="kpi-strip">
+    <div class="kpi-card">
+      <span class="kpi-value">{{ totalCount() }}</span>
+      <span class="kpi-label">Total</span>
+    </div>
+    <div class="kpi-card kpi-card--ok">
+      <span class="kpi-value">{{ activeCount() }}</span>
+      <span class="kpi-label">Actifs</span>
+    </div>
+    <div class="kpi-card kpi-card--down">
+      <span class="kpi-value">{{ inactiveCount() }}</span>
+      <span class="kpi-label">Inactifs</span>
+    </div>
+  </div>
+
+  <!-- ── Toolbar ─────────────────────────────────────────────────────────── -->
+  <div class="toolbar card">
+    <input class="search-input" type="text" placeholder="Rechercher par nom, IP, ID…" [(ngModel)]="searchQuery"
+      (ngModelChange)="searchQuery.set($event)" />
+    <div class="filter-group">
+      <button class="filter-btn" [class.active]="filterStatus() === 'all'"
+        (click)="filterStatus.set('all')">Tous</button>
+      <button class="filter-btn filter-btn--ok" [class.active]="filterStatus() === 'active'"
+        (click)="filterStatus.set('active')">Actifs</button>
+      <button class="filter-btn filter-btn--down" [class.active]="filterStatus() === 'inactive'"
+        (click)="filterStatus.set('inactive')">Inactifs</button>
+    </div>
+  </div>
+
+  <!-- ── Loading ─────────────────────────────────────────────────────────── -->
+  <div *ngIf="isLoading()" class="state-box">
+    <div class="spinner"></div>
+    <p>Chargement des ATMs…</p>
+  </div>
+
+  <!-- ── Error ───────────────────────────────────────────────────────────── -->
+  <div *ngIf="error() && !isLoading()" class="error-box">
+    <span>⚠️ {{ error() }}</span>
+    <button class="btn btn-secondary btn--sm" (click)="load()">Réessayer</button>
+  </div>
+
+  <!-- ── Table ───────────────────────────────────────────────────────────── -->
+  <div *ngIf="!isLoading() && !error()" class="table-card card">
+    <div class="table-wrapper">
+      <table class="atm-table">
+        <thead>
+          <tr>
+            <th (click)="sort('clientId')">#ID {{ sortIcon('clientId') }}</th>
+            <th (click)="sort('clientName')">Nom {{ sortIcon('clientName') }}</th>
+            <th (click)="sort('networkAddress')">Adresse réseau {{ sortIcon('networkAddress') }}</th>
+            <th (click)="sort('hardwareTypeName')">Hardware {{ sortIcon('hardwareTypeName') }}</th>
+            <th (click)="sort('connectable')">Connexion {{ sortIcon('connectable') }}</th>
+            <th (click)="sort('active')">Statut {{ sortIcon('active') }}</th>
+            <th class="col-actions">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- Empty state -->
+          <tr *ngIf="filtered().length === 0">
+            <td colspan="7" class="empty-row">
+              <div class="empty-state">
+                <div class="empty-icon">📡</div>
+                <p>Aucun ATM trouvé</p>
+              </div>
+            </td>
+          </tr>
+
+          <!-- Rows -->
+          <tr *ngFor="let atm of filtered()" class="atm-row" (click)="goEdit(atm.clientId)" style="cursor: pointer;">
+            <td class="col-id">#{{ atm.clientId }}</td>
+
+            <td class="col-name">
+              <div class="name-cell">
+                <span class="status-dot" [class.dot--ok]="atm.active" [class.dot--down]="!atm.active"></span>
+                <span>{{ atm.clientName }}</span>
+              </div>
+            </td>
+
+            <td class="col-ip"><code>{{ atm.networkAddress }}</code></td>
+
+            <td>{{ atm.hardwareTypeName ?? '—' }}</td>
+
+            <td>
+              <span class="conn-badge" [ngClass]="'conn-' + atm.connectable">
+                {{ connectableLabel(atm.connectable) }}
+              </span>
+            </td>
+
+            <td>
+              <span class="badge" [class.badge--ok]="atm.active" [class.badge--down]="!atm.active">
+                {{ atm.active ? 'Actif' : 'Inactif' }}
+              </span>
+            </td>
+
+            <td class="col-actions">
+              <button class="icon-btn icon-btn--edit" title="Modifier" (click)="goEdit(atm.clientId); $event.stopPropagation()">✏️</button>
+              <button class="icon-btn icon-btn--del" title="Supprimer" (click)="confirmDelete(atm); $event.stopPropagation()">🗑️</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="table-footer">
+      {{ filtered().length }} résultat(s) affiché(s)
+    </div>
+  </div>
+
+</div>

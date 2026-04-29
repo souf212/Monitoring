@@ -112,6 +112,10 @@ export class AtmListComponent implements OnInit {
   }
 
   // ── Helpers ────────────────────────────────────────────────────────────────
+  trackByClientId(_: number, atm: ClientAtm): number {
+    return atm.clientId;
+  }
+
   connectableLabel(val: number): string {
     return ['—', 'Non connectable', 'IP Statique', 'IP Dynamique'][val] ?? String(val);
   }

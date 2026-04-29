@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { forkJoin } from 'rxjs';
+import { LayoutService } from '../../../core/services/layout.service';
 
 interface GroupDto {
   groupId: number;
@@ -61,7 +62,10 @@ export class SidebarComponent implements OnInit {
   expandedBranches   = signal<Set<number>>(new Set());
   loadingHierarchy   = signal(false);
 
-  constructor(private http: HttpClient) {}
+  constructor(
+    private http: HttpClient,
+    public layoutService: LayoutService
+  ) {}
 
   ngOnInit() {
     this.loadGroups();

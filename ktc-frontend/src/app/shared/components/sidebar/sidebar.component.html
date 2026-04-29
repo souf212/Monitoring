@@ -1,7 +1,13 @@
-<aside class="sidebar">
+<aside class="sidebar" [class.collapsed]="layoutService.isSidebarCollapsed()">
+  <div class="sidebar-header">
+    <span class="sidebar-title" *ngIf="!layoutService.isSidebarCollapsed()">Navigation</span>
+    <button class="toggle-btn" (click)="layoutService.toggleSidebar()" title="Toggle Sidebar">
+      {{ layoutService.isSidebarCollapsed() ? '▶' : '◀' }}
+    </button>
+  </div>
 
   <!-- Tabs -->
-  <div class="tabs">
+  <div class="tabs" *ngIf="!layoutService.isSidebarCollapsed()">
     <button class="tab-btn"
             [class.active]="activeTab() === 'groups'"
             (click)="setTab('groups')">
@@ -16,7 +22,7 @@
   </div>
 
   <!-- ================= GROUPS ================= -->
-  <div class="tab-content" *ngIf="activeTab() === 'groups'">
+  <div class="tab-content" *ngIf="!layoutService.isSidebarCollapsed() && activeTab() === 'groups'">
 
     <div class="loading-state" *ngIf="loadingGroups()">
       <div class="spinner-sm"></div>
@@ -75,7 +81,7 @@
   </div>
 
   <!-- ================= HIERARCHY ================= -->
-  <div class="tab-content" *ngIf="activeTab() === 'hierarchy'">
+  <div class="tab-content" *ngIf="!layoutService.isSidebarCollapsed() && activeTab() === 'hierarchy'">
 
     <div class="loading-state" *ngIf="loadingHierarchy()">
       <div class="spinner-sm"></div>
@@ -152,6 +158,10 @@
       </li>
 
     </ul>
+  </div>
+
+  <div class="collapsed-placeholder" *ngIf="layoutService.isSidebarCollapsed()">
+    <span>☰</span>
   </div>
 
 </aside>

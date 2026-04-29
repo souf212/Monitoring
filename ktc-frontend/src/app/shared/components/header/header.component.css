@@ -226,6 +226,22 @@
   font-size: 16px;
 }
 
+.support-btn {
+  border: 1px solid var(--brand-100);
+  background: white;
+  color: var(--brand-500);
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 120ms ease;
+}
+
+.support-btn:hover {
+  background: var(--brand-50);
+  border-color: var(--brand-100);
+}
+
 /* ---- Responsive ---- */
 @media (max-width: 480px) {
   .profile-info { display: none; }

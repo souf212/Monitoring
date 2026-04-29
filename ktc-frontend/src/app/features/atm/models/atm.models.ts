@@ -128,6 +128,7 @@ export interface CreateRegionRequest {
 }
 
 export interface AtmComponentStatusDto {
+  componentId: number;
   componentName: string;
   propertyCategory: string;
   propertyName: string;
@@ -198,4 +199,158 @@ export interface AtmTicketDto {
   lastComment: string;
   slaSummary: string;
   dispatchedTo: string;
+}
+
+export interface AppCounterDto {
+  componentId: number;
+  propertyId: number;
+  propertyName: string;
+  currencyCode: string;
+  denominationId?: number | null;
+  denominationValue?: number | null;
+  counterValue: number;
+  timestmp: string;
+  lastResetTimestmp?: string | null;
+}
+
+export interface ReplenishmentDto {
+  replenishmentId: number;
+  componentId: number;
+  timestmp: string;
+  transactionId?: number | null;
+  propertyId: number;
+  propertyName: string;
+  denominationId: number;
+  denominationValue?: number | null;
+  beforeCount: number;
+  afterCount: number;
+}
+
+export interface XfsCounterDto {
+  viewType: string;
+  componentId: number;
+  number: string;
+  typeId: number;
+  currencyCode: string;
+  denominationId?: number | null;
+  denominationValue?: number | null;
+  currencyValue?: number | null;
+  unitCount?: number | null;
+  totalValue?: number | null;
+  count?: number | null;
+  statusId: number;
+  timestmp: string;
+}
+
+export interface XfsCountersResponseDto {
+  logicalView: XfsCounterDto[];
+  physicalView: XfsCounterDto[];
+}
+
+export interface AtmActionDto {
+  actionId: number;
+  user: string;
+  command: string;
+  status: string;
+  started?: string | null;
+  finished?: string | null;
+  lastComment: string;
+}
+
+export interface ElectronicJournalEntryDto {
+  transactionId: number;
+  timestamp: string;
+  type: string;
+  amount?: number | null;
+  effectiveAmount?: number | null;
+  ejStartId?: number | null;
+  ejEndId?: number | null;
+}
+
+export interface LookupItemDto {
+  id: number;
+  code: string;
+}
+
+export interface TransactionAuditDto {
+  sessionId: number;
+  transactionId: number;
+  transactionGuid: string;
+  timestamp: string;
+  type: string;
+  amount: number;
+  completion: string;
+  reason: string;
+  hasEj: boolean;
+}
+
+export interface TransactionSearchCriteria {
+  from?: string | null;
+  to?: string | null;
+  amount?: number | null;
+  typeLookupId?: number | null;
+  reasonLookupId?: number | null;
+  completionLookupId?: number | null;
+  sessionId?: number | null;
+  transactionId?: number | null;
+  transactionGuid?: string | null;
+}
+
+export interface VideoJournalEventDto {
+  transactionInformation: string;
+  transactionId?: number | null;
+  sessionId?: number | null;
+  transactionGuid?: string | null;
+  timestamp: string;
+  type: string;
+  completion: string;
+  cameraPosition: string;
+  position: string;
+  suspect: boolean;
+  amount?: number | null;
+  mediaId: number;
+  mediaFileName: string;
+  mediaUrl: string;
+  mediaKind: string;
+}
+
+export interface ServiceStateMetricDto {
+  state: string;
+  seconds: number;
+  duration: string;
+  percent: number;
+}
+
+export interface UnavailableReasonMetricDto {
+  reasonId: number;
+  reason: string;
+  seconds: number;
+  duration: string;
+  percent: number;
+}
+
+export interface ErrorCodeMetricDto {
+  errorCodeTypeId: number;
+  code: string;
+  reason: string;
+  seconds: number;
+  duration: string;
+  percent: number;
+}
+
+export interface AtmAvailabilityReportDto {
+  from: string;
+  to: string;
+  totalSeconds: number;
+  totalDuration: string;
+  serviceStates: ServiceStateMetricDto[];
+  uptimeSeconds: number;
+  uptimeDuration: string;
+  uptimePercent: number;
+  downtimeSeconds: number;
+  downtimeDuration: string;
+  downtimePercent: number;
+  topUnavailableReasons: UnavailableReasonMetricDto[];
+  topErrorCodes: ErrorCodeMetricDto[];
+  coveringText: string;
 }

@@ -1,5 +1,5 @@
 export * from '../models/atm.models';
-import { ClientAtm, BusinessDto, BusinessDetailsDto, BranchDto, RegionDto, RegionDetailsDto, HardwareTypeDto, CreateOrUpdateAtmRequest, CreateBranchRequest, CreateBusinessRequest, CreateRegionRequest, AtmComponentStatusDto, AtmAssetHistoryDto, RegionListDto, LastClientContactDto, AtmSoftwareInfoDto, AtmCertificateDto, AtmTicketDto } from '../models/atm.models';
+import { ClientAtm, BusinessDto, BusinessDetailsDto, BranchDto, RegionDto, RegionDetailsDto, HardwareTypeDto, CreateOrUpdateAtmRequest, CreateBranchRequest, CreateBusinessRequest, CreateRegionRequest, AtmComponentStatusDto, AtmAssetHistoryDto, RegionListDto, LastClientContactDto, AtmSoftwareInfoDto, AtmCertificateDto, AtmTicketDto, AppCounterDto, ReplenishmentDto, XfsCountersResponseDto, AtmActionDto, ElectronicJournalEntryDto, LookupItemDto, TransactionAuditDto, TransactionSearchCriteria, VideoJournalEventDto, AtmAvailabilityReportDto } from '../models/atm.models';
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
@@ -37,6 +37,59 @@ export class AtmService {
 
   getAtmStatus(clientId: number): Observable<AtmComponentStatusDto[]> {
     return this.http.get<AtmComponentStatusDto[]>(`${this.BASE}/clients/${clientId}/status`);
+  }
+
+  getApplicationCounters(clientId: number, componentId: number): Observable<AppCounterDto[]> {
+    return this.http.get<AppCounterDto[]>(`${this.BASE}/clients/${clientId}/components/${componentId}/application-counters`);
+  }
+
+  getReplenishments(clientId: number, componentId: number): Observable<ReplenishmentDto[]> {
+    return this.http.get<ReplenishmentDto[]>(`${this.BASE}/clients/${clientId}/components/${componentId}/replenishments`);
+  }
+
+  getXfsCounters(clientId: number, componentId: number): Observable<XfsCountersResponseDto> {
+    return this.http.get<XfsCountersResponseDto>(`${this.BASE}/clients/${clientId}/components/${componentId}/xfs-counters`);
+  }
+
+  getClientActions(clientId: number, from?: string, to?: string): Observable<AtmActionDto[]> {
+    const params: Record<string, string> = {};
+    if (from) params['from'] = from;
+    if (to) params['to'] = to;
+    return this.http.get<AtmActionDto[]>(`${this.BASE}/clients/${clientId}/actions`, { params });
+  }
+
+  getElectronicJournal(clientId: number, from: string, to: string): Observable<ElectronicJournalEntryDto[]> {
+    return this.http.get<ElectronicJournalEntryDto[]>(`${this.BASE}/clients/${clientId}/electronic-journal`, {
+      params: { from, to }
+    });
+  }
+
+  getTransactionTypeCodes(): Observable<LookupItemDto[]> {
+    return this.http.get<LookupItemDto[]>(`${this.BASE}/transactions/lookups/type-codes`);
+  }
+
+  getTransactionReasonCodes(): Observable<LookupItemDto[]> {
+    return this.http.get<LookupItemDto[]>(`${this.BASE}/transactions/lookups/reason-codes`);
+  }
+
+  getTransactionCompletionCodes(): Observable<LookupItemDto[]> {
+    return this.http.get<LookupItemDto[]>(`${this.BASE}/transactions/lookups/completion-codes`);
+  }
+
+  searchAtmTransactions(clientId: number, criteria: TransactionSearchCriteria): Observable<TransactionAuditDto[]> {
+    return this.http.post<TransactionAuditDto[]>(`${this.BASE}/clients/${clientId}/transactions/search`, criteria);
+  }
+
+  searchVideoJournal(clientId: number, from: string, to: string, search?: string): Observable<VideoJournalEventDto[]> {
+    const params: Record<string, string> = { from, to };
+    if (search) params['search'] = search;
+    return this.http.get<VideoJournalEventDto[]>(`${this.BASE}/clients/${clientId}/videojournal/search`, { params });
+  }
+
+  getAvailability(clientId: number, from: string, to: string): Observable<AtmAvailabilityReportDto> {
+    return this.http.get<AtmAvailabilityReportDto>(`${this.BASE}/clients/${clientId}/availability`, {
+      params: { from, to }
+    });
   }
 
   getAtmAssetHistory(clientId: number): Observable<AtmAssetHistoryDto[]> {

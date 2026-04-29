@@ -23,6 +23,8 @@ builder.Services.AddCors(options =>
 // Injection de dépendance
 builder.Services.AddSingleton<ActiveDirectoryService>();
 builder.Services.AddScoped<IAtmRepository, AtmRepository>();
+builder.Services.AddScoped<IAtmAdminRepository, AtmAdminRepository>();
+builder.Services.AddScoped<IAtmApplicationService, AtmApplicationService>();
 // === AJOUT POUR LA BASE KTC ===
 // === CONNEXION BASE DE DONNÉES KTC ===
 builder.Services.AddDbContext<KtcDbContext>(options =>

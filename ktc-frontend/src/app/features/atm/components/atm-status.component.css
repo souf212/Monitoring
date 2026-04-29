@@ -93,6 +93,37 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  background: #f2f2f2;
+}
+
+.subtab-nav {
+  display: flex;
+  gap: 0;
+  padding: 0 12px;
+  border-bottom: 1px solid #cfcfcf;
+  background: #e4e4e4;
+}
+
+.subtab-button {
+  border: 0;
+  border-right: 1px solid #c4c4c4;
+  background: transparent;
+  color: #333;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 10px 14px;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.2px;
+}
+
+.subtab-button:hover {
+  background: #dcdcdc;
+}
+
+.subtab-button.active {
+  background: #ffffff;
+  box-shadow: inset 0 -2px 0 #7d7d7d;
 }
 
 .empty-selection {
@@ -108,6 +139,7 @@
   flex: 1;
   overflow-y: auto;
   padding: 16px;
+  background: #f2f2f2;
 }
 
 .category-section {
@@ -126,25 +158,27 @@
 .detail-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 14px;
+  font-size: 12px;
+  background: #fff;
 }
 
 .detail-table th, .detail-table td {
-  padding: 10px 12px;
+  padding: 7px 10px;
   text-align: left;
-  border-bottom: 1px solid var(--border-light, #eee);
+  border: 1px solid #d2d2d2;
+  white-space: nowrap;
 }
 
 .detail-table th {
   font-weight: 600;
-  color: var(--muted-text, #666);
-  background-color: var(--surface-light, #fafafa);
+  color: #4b4b4b;
+  background-color: #ececec;
   position: sticky;
   top: 0;
 }
 
-.detail-table tr:hover td {
-  background-color: rgba(0, 0, 0, 0.015);
+.detail-table tbody tr:nth-child(even) td {
+  background-color: #f7f7f7;
 }
 
 .col-status {
@@ -153,10 +187,7 @@
 }
 
 .col-value {
-  font-family: monospace;
-  background-color: rgba(0,0,0,0.03);
-  border-radius: 4px;
-  padding: 2px 6px;
+  font-family: Consolas, "Courier New", monospace;
 }
 
 /* LEDs */

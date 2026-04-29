@@ -46,10 +46,14 @@
     </div>
   </div>
 
-  <!-- ── Loading ─────────────────────────────────────────────────────────── -->
-  <div *ngIf="isLoading()" class="state-box">
-    <div class="spinner"></div>
-    <p>Chargement des ATMs…</p>
+  <!-- ── Loading (Skeleton cards) ───────────────────────────────────────── -->
+  <div *ngIf="isLoading()" class="atm-grid atm-grid--skeleton">
+    <article class="atm-card atm-card--skeleton" *ngFor="let item of [1,2,3,4,5,6]">
+      <div class="skeleton-line skeleton-line--title"></div>
+      <div class="skeleton-line"></div>
+      <div class="skeleton-line"></div>
+      <div class="skeleton-line skeleton-line--short"></div>
+    </article>
   </div>
 
   <!-- ── Error ───────────────────────────────────────────────────────────── -->
@@ -58,70 +62,56 @@
     <button class="btn btn-secondary btn--sm" (click)="load()">Réessayer</button>
   </div>
 
-  <!-- ── Table ───────────────────────────────────────────────────────────── -->
-  <div *ngIf="!isLoading() && !error()" class="table-card card">
-    <div class="table-wrapper">
-      <table class="atm-table">
-        <thead>
-          <tr>
-            <th (click)="sort('clientId')">#ID {{ sortIcon('clientId') }}</th>
-            <th (click)="sort('clientName')">Nom {{ sortIcon('clientName') }}</th>
-            <th (click)="sort('networkAddress')">Adresse réseau {{ sortIcon('networkAddress') }}</th>
-            <th (click)="sort('hardwareTypeName')">Hardware {{ sortIcon('hardwareTypeName') }}</th>
-            <th (click)="sort('connectable')">Connexion {{ sortIcon('connectable') }}</th>
-            <th (click)="sort('active')">Statut {{ sortIcon('active') }}</th>
-            <th class="col-actions">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          <!-- Empty state -->
-          <tr *ngIf="filtered().length === 0">
-            <td colspan="7" class="empty-row">
-              <div class="empty-state">
-                <div class="empty-icon">📡</div>
-                <p>Aucun ATM trouvé</p>
-              </div>
-            </td>
-          </tr>
+  <!-- ── Cards ───────────────────────────────────────────────────────────── -->
+  <div *ngIf="!isLoading() && !error()" class="card card-surface">
+    <div class="card-toolbar">
+      <button class="sort-chip" (click)="sort('clientName')">
+        <span>Nom</span> <span>{{ sortIcon('clientName') }}</span>
+      </button>
+      <button class="sort-chip" (click)="sort('clientId')">
+        <span>ID</span> <span>{{ sortIcon('clientId') }}</span>
+      </button>
+      <button class="sort-chip" (click)="sort('active')">
+        <span>Statut</span> <span>{{ sortIcon('active') }}</span>
+      </button>
+    </div>
 
-          <!-- Rows -->
-          <tr *ngFor="let atm of filtered()" class="atm-row" (click)="goEdit(atm.clientId)" style="cursor: pointer;">
-            <td class="col-id">#{{ atm.clientId }}</td>
+    <div *ngIf="filtered().length === 0" class="empty-state">
+      <div class="empty-icon">📡</div>
+      <p>Aucun ATM trouvé avec ces filtres</p>
+    </div>
 
-            <td class="col-name">
-              <div class="name-cell">
-                <span class="status-dot" [class.dot--ok]="atm.active" [class.dot--down]="!atm.active"></span>
-                <span>{{ atm.clientName }}</span>
-              </div>
-            </td>
+    <div *ngIf="filtered().length > 0" class="atm-grid">
+      <article *ngFor="let atm of filtered(); trackBy: trackByClientId" class="atm-card" (click)="goEdit(atm.clientId)">
+        <header class="atm-card__head">
+          <div class="name-cell">
+            <span class="status-dot" [class.dot--ok]="atm.active" [class.dot--down]="!atm.active"></span>
+            <h3>{{ atm.clientName }}</h3>
+          </div>
+          <span class="badge" [class.badge--ok]="atm.active" [class.badge--down]="!atm.active">
+            <span class="status-icon">{{ atm.active ? '🟢' : '🔴' }}</span>
+            {{ atm.active ? 'Online' : 'Offline' }}
+          </span>
+        </header>
 
-            <td class="col-ip"><code>{{ atm.networkAddress }}</code></td>
+        <div class="atm-card__meta">
+          <div class="meta-row"><span class="meta-icon">🆔</span> <span>#{{ atm.clientId }}</span></div>
+          <div class="meta-row"><span class="meta-icon">🌐</span> <code>{{ atm.networkAddress }}</code></div>
+          <div class="meta-row"><span class="meta-icon">🏧</span> <span>{{ atm.hardwareTypeName ?? 'Unknown hardware' }}</span></div>
+          <div class="meta-row"><span class="meta-icon">🔌</span>
+            <span class="conn-badge" [ngClass]="'conn-' + atm.connectable">{{ connectableLabel(atm.connectable) }}</span>
+          </div>
+        </div>
 
-            <td>{{ atm.hardwareTypeName ?? '—' }}</td>
-
-            <td>
-              <span class="conn-badge" [ngClass]="'conn-' + atm.connectable">
-                {{ connectableLabel(atm.connectable) }}
-              </span>
-            </td>
-
-            <td>
-              <span class="badge" [class.badge--ok]="atm.active" [class.badge--down]="!atm.active">
-                {{ atm.active ? 'Actif' : 'Inactif' }}
-              </span>
-            </td>
-
-            <td class="col-actions">
-              <button class="icon-btn icon-btn--edit" title="Modifier" (click)="goEdit(atm.clientId); $event.stopPropagation()">✏️</button>
-              <button class="icon-btn icon-btn--del" title="Supprimer" (click)="confirmDelete(atm); $event.stopPropagation()">🗑️</button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+        <footer class="atm-card__actions">
+          <button class="icon-btn icon-btn--edit" title="Modifier" (click)="goEdit(atm.clientId); $event.stopPropagation()">✏️ Edit</button>
+          <button class="icon-btn icon-btn--del" title="Supprimer" (click)="confirmDelete(atm); $event.stopPropagation()">🗑 Delete</button>
+        </footer>
+      </article>
     </div>
 
     <div class="table-footer">
-      {{ filtered().length }} résultat(s) affiché(s)
+      {{ filtered().length }} ATM(s) affiché(s)
     </div>
   </div>
 

@@ -111,8 +111,9 @@ namespace KtcWeb.Domain.Entities
     [Table("PhysicalCassettes")]
     public class PhysicalCassette
     {
+        // FIX: DB schema defines cassette_id as bigint IDENTITY — must be long, not int.
         [Column("cassette_id")]
-        public int CassetteId { get; set; }
+        public long CassetteId { get; set; }
 
         [Column("client_id")]
         public int ClientId { get; set; }
@@ -131,8 +132,9 @@ namespace KtcWeb.Domain.Entities
     [Table("PhysicalCassetteCounts")]
     public class PhysicalCassetteCount
     {
+        // FIX: FK to PhysicalCassettes.cassette_id which is bigint — must be long, not int.
         [Column("cassette_id")]
-        public int CassetteId { get; set; }
+        public long CassetteId { get; set; }
 
         [Column("denomination_id")]
         public short DenominationId { get; set; }
@@ -146,13 +148,16 @@ namespace KtcWeb.Domain.Entities
     public class PhysicalCassetteCurrentStatus
     {
         [Column("cassette_id")]
-        public int CassetteId { get; set; }
+        public long CassetteId { get; set; }
 
         [Column("timestmp")]
         public DateTime Timestmp { get; set; }
 
         [Column("status_id")]
         public byte StatusId { get; set; }
+
+        [Column("reported")]
+        public bool Reported { get; set; }
     }
 
     [Keyless]
@@ -181,5 +186,27 @@ namespace KtcWeb.Domain.Entities
 
         [Column("currency_description")]
         public string Description { get; set; } = string.Empty;
+    }
+
+    [Keyless]
+    [Table("CashUnitStatuses")]
+    public class CashUnitStatus
+    {
+        [Column("cashunitstatus_id")]
+        public byte CashUnitStatusId { get; set; }
+
+        [Column("statusname")]
+        public string StatusName { get; set; } = string.Empty;
+    }
+
+    [Keyless]
+    [Table("CashUnitTypes")]
+    public class CashUnitType
+    {
+        [Column("cashunittype_id")]
+        public byte CashUnitTypeId { get; set; }
+
+        [Column("typename")]
+        public string TypeName { get; set; } = string.Empty;
     }
 }

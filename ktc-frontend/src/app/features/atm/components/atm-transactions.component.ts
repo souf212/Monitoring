@@ -1,26 +1,37 @@
 import { CommonModule, DatePipe } from '@angular/common';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, OnDestroy, NgZone, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
-import { finalize } from 'rxjs';
+import { Subject, finalize } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
 import { AtmService } from '../services/atm.service';
+import { AtmRealtimeService } from '../services/atm-realtime.service';
 import { LookupItemDto, TransactionAuditDto, TransactionSearchCriteria } from '../models/atm.models';
+import { ExportButtonComponent } from '../../../shared/components/export-button/export-button.component';
 
 type FindMode = 'session' | 'transaction' | 'guid';
 
 @Component({
   selector: 'app-atm-transactions',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, DatePipe],
+  imports: [CommonModule, ReactiveFormsModule, DatePipe, ExportButtonComponent],
   templateUrl: './atm-transactions.component.html',
   styleUrl: './atm-transactions.component.css'
 })
-export class AtmTransactionsComponent {
+export class AtmTransactionsComponent implements OnInit, OnDestroy {
   private readonly atmService = inject(AtmService);
   private readonly route = inject(ActivatedRoute);
   private readonly fb = inject(FormBuilder);
+  private readonly realtimeService = inject(AtmRealtimeService);
+  private readonly ngZone = inject(NgZone);
+  private readonly destroy$ = new Subject<void>();
 
-  readonly clientId = computed(() => Number(this.route.snapshot.paramMap.get('id') ?? 0));
+  readonly clientId = computed(() => {
+    // The ATM id is on the PARENT route /atm/:id, not on the child tab route
+    const fromParent = this.route.parent?.snapshot.paramMap.get('id');
+    const fromSelf   = this.route.snapshot.paramMap.get('id');
+    return Number(fromParent ?? fromSelf ?? 0);
+  });
 
   readonly isLoadingLookups = signal(false);
   readonly isSearching = signal(false);
@@ -31,6 +42,20 @@ export class AtmTransactionsComponent {
   readonly completionCodes = signal<LookupItemDto[]>([]);
 
   readonly results = signal<TransactionAuditDto[]>([]);
+
+  /** Export des transactions trouvées */
+  readonly exportData = computed(() =>
+    this.results().map(r => ({
+      'Session ID':      r.sessionId,
+      'Transaction ID':  r.transactionId,
+      'Timestamp':       r.timestamp,
+      'Type':            r.type ?? '',
+      'Amount':          r.amount ?? '',
+      'Completion':      r.completion ?? '',
+      'Reason':          r.reason ?? '',
+      'Has EJ':          r.hasEj ? 'Oui' : 'Non'
+    }))
+  );
 
   // UI state for direct find
   readonly findMode = signal<FindMode>('session');
@@ -64,6 +89,23 @@ export class AtmTransactionsComponent {
 
   ngOnInit() {
     this.loadLookups();
+    // Auto-search on tab open so user sees data immediately
+    this.applyFilter();
+    this.subscribeToRealtimeUpdates(this.clientId());
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  private subscribeToRealtimeUpdates(clientId: number): void {
+    this.realtimeService.transactionUpdates$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(update => {
+        if (update.clientId !== clientId) return;
+        this.ngZone.run(() => this.applyFilter());
+      });
   }
 
   loadLookups() {
@@ -73,7 +115,11 @@ export class AtmTransactionsComponent {
     let pending = 3;
     const done = () => {
       pending--;
-      if (pending <= 0) this.isLoadingLookups.set(false);
+      if (pending <= 0) {
+        this.isLoadingLookups.set(false);
+        // If no results yet, re-trigger search now that clientId is fully resolved
+        if (this.results().length === 0) this.applyFilter();
+      }
     };
 
     this.atmService.getTransactionTypeCodes().pipe(finalize(done)).subscribe({

@@ -1,18 +1,25 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, OnDestroy, NgZone, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
+import { Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
 import { AtmService, ElectronicJournalEntryDto } from '../services/atm.service';
+import { AtmRealtimeService } from '../services/atm-realtime.service';
+import { ExportButtonComponent } from '../../../shared/components/export-button/export-button.component';
 
 @Component({
   selector: 'app-atm-electronic-journal',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, ExportButtonComponent],
   templateUrl: './atm-electronic-journal.component.html',
   styleUrls: ['./atm-electronic-journal.component.css']
 })
-export class AtmElectronicJournalComponent implements OnInit {
+export class AtmElectronicJournalComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly atmService = inject(AtmService);
+  private readonly realtimeService = inject(AtmRealtimeService);
+  private readonly ngZone = inject(NgZone);
+  private readonly destroy$ = new Subject<void>();
 
   readonly clientId = signal<number | null>(null);
 
@@ -25,6 +32,19 @@ export class AtmElectronicJournalComponent implements OnInit {
 
   readonly isEmpty = computed(() => !this.isLoading() && !this.error() && this.rows().length === 0);
 
+  /** Export des lignes du journal électronique */
+  readonly exportData = computed(() =>
+    this.rows().map(r => ({
+      'Timestamp':         r.timestamp,
+      'Type':              r.type ?? '',
+      'Amount':            r.amount ?? '',
+      'Effective Amount':  r.effectiveAmount ?? '',
+      'EJ Start ID':       r.ejStartId ?? '',
+      'EJ End ID':         r.ejEndId ?? '',
+      'Transaction ID':    r.transactionId
+    }))
+  );
+
   ngOnInit(): void {
     const idStr = this.route.parent?.snapshot.paramMap.get('id') ?? this.route.snapshot.paramMap.get('id');
     this.clientId.set(idStr ? Number(idStr) : null);
@@ -36,6 +56,21 @@ export class AtmElectronicJournalComponent implements OnInit {
     this.to.set(to);
 
     this.refresh();
+    this.subscribeToRealtimeUpdates(this.clientId()!);
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  private subscribeToRealtimeUpdates(clientId: number): void {
+    this.realtimeService.journalUpdates$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(update => {
+        if (update.clientId !== clientId) return;
+        this.ngZone.run(() => this.refresh());
+      });
   }
 
   refresh(): void {

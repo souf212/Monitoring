@@ -1,10 +1,13 @@
-import { Component, Input, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, Input, OnInit, OnDestroy, computed, inject, signal, NgZone } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
 import { AtmService, AtmComponentStatusDto } from '../services/atm.service';
 import { AppCountersTableComponent } from './app-counters-table.component';
 import { ReplenishmentTableComponent } from './replenishment-table.component';
 import { XfsCountersComponent } from './xfs-counters.component';
+import { AtmRealtimeService } from '../services/atm-realtime.service';
+import { Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
 
 type StatusSubTabId = 'details' | 'status' | 'app-counters' | 'replenishment' | 'xfs-counters';
 
@@ -86,11 +89,14 @@ const COMPONENT_TAB_RULES: ComponentTabRule[] = [
   templateUrl: './atm-status.component.html',
   styleUrls: ['./atm-status.component.css']
 })
-export class AtmStatusComponent implements OnInit {
+export class AtmStatusComponent implements OnInit, OnDestroy {
   @Input() clientId?: number;
   
   private route = inject(ActivatedRoute);
   private atmService = inject(AtmService);
+  private realtimeService = inject(AtmRealtimeService);
+  private ngZone = inject(NgZone);
+  private destroy$ = new Subject<void>();
 
   isLoading = signal(true);
   error = signal<string | null>(null);
@@ -176,21 +182,55 @@ export class AtmStatusComponent implements OnInit {
   });
 
   ngOnInit(): void {
-    // Try to get from Input, then current route, then parent route
-    let idStr = this.route.snapshot.paramMap.get('id');
-    if (!idStr && this.route.parent) {
-      idStr = this.route.parent.snapshot.paramMap.get('id');
-    }
+    const routeToWatch = this.route.parent?.paramMap ?? this.route.paramMap;
 
-    const finalId = this.clientId ?? (idStr ? Number(idStr) : null);
-    this.resolvedClientId.set(finalId);
+    routeToWatch.subscribe(params => {
+      let idStr = this.route.snapshot.paramMap.get('id');
+      if (!idStr && this.route.parent) {
+        idStr = this.route.parent.snapshot.paramMap.get('id');
+      }
 
-    if (finalId) {
-      this.loadStatus(finalId);
-    } else {
-      this.error.set("Aucun identifiant d'ATM fourni.");
-      this.isLoading.set(false);
-    }
+      const finalId = this.clientId ?? (idStr ? Number(idStr) : null);
+      this.resolvedClientId.set(finalId);
+
+      if (finalId) {
+        this.loadStatus(finalId);
+        this.subscribeToRealtimeUpdates(finalId);
+      } else {
+        this.error.set("Aucun identifiant d'ATM fourni.");
+        this.isLoading.set(false);
+      }
+    });
+
+    this.route.queryParamMap.subscribe(params => {
+      const requested = (params.get('component') || '').trim().toLowerCase();
+      if (!requested) return;
+      const match = this.uniqueComponents().find(c =>
+        c.name.toLowerCase() === requested ||
+        c.displayName.toLowerCase() === requested ||
+        c.displayName.toLowerCase().includes(requested)
+      );
+      if (match) {
+        this.selectComponent(match.name);
+      }
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  private subscribeToRealtimeUpdates(clientId: number): void {
+    this.realtimeService.statusUpdates$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(update => {
+        if (update.clientId !== clientId) return;
+        this.ngZone.run(() => {
+          // Reload status data when any component status changes
+          this.loadStatus(clientId);
+        });
+      });
   }
 
   loadStatus(id: number): void {

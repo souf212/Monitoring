@@ -64,6 +64,27 @@
   background-color: var(--surface-light, #fafafa);
   border-bottom: 1px solid var(--border-light, #eee);
   flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+/* Export button pushed to the right */
+.toolbar-export {
+  margin-left: auto;
+  align-self: flex-end;
+}
+
+/* Row count badge next to title */
+.row-count {
+  margin-left: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #fff;
+  background: var(--primary, #3b82f6);
+  padding: 2px 8px;
+  border-radius: 10px;
+  vertical-align: middle;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .filter-group {

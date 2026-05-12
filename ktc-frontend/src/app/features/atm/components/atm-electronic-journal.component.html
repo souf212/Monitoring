@@ -8,7 +8,12 @@
       <label>To</label>
       <input type="datetime-local" [value]="to()" (input)="to.set(($any($event.target)).value)" />
     </div>
-    <button class="btn" type="button" (click)="refresh()">Refresh</button>
+    <button class="btn" type="button" (click)="refresh()">↻ Refresh</button>
+    <app-export-button
+      [data]="exportData()"
+      [fileName]="'electronic_journal_atm' + (clientId() ?? 0)"
+      [sheetName]="'Electronic Journal'"
+    />
   </div>
 
   @if (isLoading()) {

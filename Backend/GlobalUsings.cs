@@ -6,4 +6,5 @@ global using KtcWeb.Application.Services;
 global using KtcWeb.Infrastructure.Data;
 global using KtcWeb.Infrastructure.Repositories;
 global using KtcWeb.Infrastructure.ExternalServices;
+global using KtcWeb.Infrastructure.BackgroundServices;
 

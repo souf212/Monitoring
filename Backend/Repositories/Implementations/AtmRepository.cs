@@ -1,5 +1,3 @@
-
-
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -291,21 +289,34 @@ namespace KtcWeb.Infrastructure.Repositories
                     cl.subject_name ASC", clientId).ToListAsync();
         }
 
-        public async Task<List<AtmActionDto>> GetClientActionsAsync(int clientId, DateTime? from, DateTime? to)
+        public async Task<AtmActionsResponseDto> GetClientActionsAsync(int clientId, DateTime? from, DateTime? to, int? days, string? addedByUser)
         {
             // Notes:
             // - Actions.comments is XML. We convert to NVARCHAR for parsing in C#.
-            // - We filter by client_id and time window to avoid scanning.
-            var fromDate = from ?? DateTime.UtcNow.AddDays(-90);
-            var toDate = to ?? DateTime.UtcNow.AddDays(1);
+            // - Time window: explicit from/to overrides; otherwise optional rolling `days`; else default 90 days.
+            DateTime fromDate;
+            DateTime toDate;
+            if (from == null && to == null && days is >= 1)
+            {
+                fromDate = DateTime.UtcNow.AddDays(-days.Value);
+                toDate = DateTime.UtcNow.AddDays(1);
+            }
+            else
+            {
+                fromDate = from ?? DateTime.UtcNow.AddDays(-90);
+                toDate = to ?? DateTime.UtcNow.AddDays(1);
+            }
 
+            // Pull enough rows to populate "Added by user" options and optional user filter without duplicating tables.
+            // Dates en nvarchar : évite les soucis de matérialisation EF / JSON ; la base stocke l’heure en UTC (schéma KTC).
             var raw = await _context.Database.SqlQueryRaw<ActionRaw>(@"
-                SELECT TOP (500)
+                SELECT TOP (1500)
                     a.action_id AS ActionId,
                     ct.commandname AS CommandName,
                     a.status_id AS StatusId,
-                    a.starttime AS Started,
-                    a.endtime AS Finished,
+                    CONVERT(varchar(19), a.addedtime, 120) AS AddedTime,
+                    CONVERT(varchar(19), a.starttime, 120) AS Started,
+                    CONVERT(varchar(19), a.endtime, 120) AS Finished,
                     CAST(a.comments AS nvarchar(max)) AS CommentsXml
                 FROM dbo.Actions a
                 LEFT JOIN dbo.CommandTypes ct ON ct.command_id = a.command_id
@@ -315,32 +326,324 @@ namespace KtcWeb.Infrastructure.Repositories
                 ORDER BY ISNULL(a.addedtime, a.starttime) DESC, a.action_id DESC",
                 clientId, fromDate, toDate).ToListAsync();
 
-            var result = new List<AtmActionDto>();
+            var parsed = new List<AtmActionDto>(raw.Count);
 
             foreach (var row in raw)
             {
                 var (user, lastComment) = ParseLastActionComment(row.CommentsXml);
 
-                result.Add(new AtmActionDto
+                parsed.Add(new AtmActionDto
                 {
                     ActionId = row.ActionId,
                     User = user,
                     Command = string.IsNullOrWhiteSpace(row.CommandName) ? "Unknown" : row.CommandName,
                     Status = MapActionStatus(row.StatusId),
+                    AddedTime = row.AddedTime,
                     Started = row.Started,
                     Finished = row.Finished,
                     LastComment = lastComment
                 });
             }
 
-            return result;
+            var distinctUsers = parsed
+                .Select(a => a.User)
+                .Where(u => !string.IsNullOrWhiteSpace(u))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(u => u, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            var filterUser = addedByUser?.Trim();
+            IEnumerable<AtmActionDto> visible = parsed;
+            if (!string.IsNullOrEmpty(filterUser))
+            {
+                visible = parsed.Where(a => string.Equals(a.User, filterUser, StringComparison.OrdinalIgnoreCase));
+            }
+
+            return new AtmActionsResponseDto
+            {
+                Items = visible.Take(500).ToList(),
+                AddedByUsers = distinctUsers
+            };
+        }
+
+        public async Task<List<AtmUploadDto>> GetClientUploadsAsync(int clientId)
+        {
+            var uploads = await _context.Database.SqlQueryRaw<AtmUploadDto>(@"
+                SELECT
+                    u.action_id    AS ActionId,
+                    u.filelocation AS FileLocation,
+                    -- Extract filename from the stored path
+                    REVERSE(SUBSTRING(REVERSE(u.filelocation), 1, CHARINDEX('\\', REVERSE(u.filelocation) + '\\') - 1)) AS FileName,
+                    u.filetype     AS FileType,
+                    CASE u.filetype
+                        WHEN 0 THEN 'Other'
+                        WHEN 1 THEN 'Kalignite Trace'
+                        WHEN 2 THEN 'Copy of Electronic Journal'
+                        WHEN 3 THEN 'Windows event log'
+                        WHEN 4 THEN 'Registry export'
+                        WHEN 5 THEN 'Screenshot / Image'
+                        WHEN 6 THEN 'Trace Backup cab'
+                        ELSE 'Unknown'
+                    END AS FileTypeLabel,
+                    ct.commandname AS CommandName,
+                    s.schedulename AS ScheduleName,
+                    CASE a.status_id
+                        WHEN 1 THEN 'Pending'
+                        WHEN 2 THEN 'InProgress'
+                        WHEN 3 THEN 'Complete'
+                        WHEN 4 THEN 'Error'
+                        WHEN 5 THEN 'Timeout'
+                        WHEN 6 THEN 'Cancelled'
+                        WHEN 7 THEN 'Immediate'
+                        WHEN 8 THEN 'Scheduled'
+                        ELSE 'Unknown'
+                    END AS Status,
+                    CONVERT(nvarchar(30), a.addedtime, 120) AS AddedTime,
+                    CONVERT(nvarchar(max), a.comments) AS Comments
+                FROM dbo.Uploads u
+                INNER JOIN dbo.Actions a ON a.action_id = u.action_id
+                LEFT JOIN dbo.CommandTypes ct ON ct.command_id = a.command_id
+                LEFT JOIN dbo.Schedules s ON s.schedule_id = a.schedule_id
+                WHERE u.client_id = {0}
+                ORDER BY a.addedtime DESC, u.action_id DESC",
+                clientId).ToListAsync();
+
+            return uploads;
+        }
+
+        // Exact types from dbo.Schedules DDL:
+        //   schedule_id          int        -> int
+        //   group_id             int        -> int   (NOT smallint!)
+        //   command_id           tinyint    -> byte
+        //   business_id          smallint   -> short
+        //   performactioneverytime bit      -> bool
+        // dbo.Clients.business_id           smallint -> short
+        private sealed class ScheduleRaw
+        {
+            public int     ScheduleId             { get; set; }
+            public string  ScheduleName           { get; set; } = string.Empty;
+            public string  Frequency              { get; set; } = string.Empty;
+            public string  NextDue                { get; set; } = string.Empty;
+            public int     GroupId                { get; set; }   // int
+            public string  GroupName              { get; set; } = string.Empty;
+            public byte    CommandId              { get; set; }   // tinyint
+            public string  CommandName            { get; set; } = string.Empty;
+            public string  Comments               { get; set; } = string.Empty;
+            public string? LastActioned           { get; set; }
+            public short   BusinessId             { get; set; }   // smallint
+            public string  BusinessName           { get; set; } = string.Empty;
+            public bool    PerformActionEveryTime { get; set; }   // bit
+        }
+
+        private static List<AtmScheduleDto> MapScheduleRaw(List<ScheduleRaw> rows) =>
+            rows.Select(r => new AtmScheduleDto
+            {
+                ScheduleId             = r.ScheduleId,
+                ScheduleName           = r.ScheduleName,
+                Frequency              = r.Frequency,
+                NextDue                = r.NextDue,
+                GroupId                = r.GroupId,
+                GroupName              = r.GroupName,
+                CommandId              = r.CommandId,
+                CommandName            = r.CommandName,
+                Comments               = r.Comments,
+                LastActioned           = r.LastActioned,
+                BusinessId             = r.BusinessId,
+                BusinessName           = r.BusinessName,
+                PerformActionEveryTime = r.PerformActionEveryTime
+            }).ToList();
+
+        private class ClientBusinessId
+        {
+            public short BusinessId { get; set; }  // smallint in dbo.Clients
+        }
+
+        public async Task<List<AtmScheduleDto>> GetClientSchedulesAsync(int clientId)
+        {
+            try
+            {
+                var hasGroupClients = await TableExistsAsync("GroupClients");
+
+                // No SQL CAST needed — ScheduleRaw properties exactly match the native DB column types.
+                const string selectCols = @"
+                            s.schedule_id          AS ScheduleId,
+                            s.schedulename         AS ScheduleName,
+                            s.frequency            AS Frequency,
+                            CONVERT(varchar(19), s.nextdue, 120) AS NextDue,
+                            ISNULL(s.group_id,    0)  AS GroupId,
+                            ISNULL(g.groupname,  N'') AS GroupName,
+                            ISNULL(s.command_id,  0)  AS CommandId,
+                            ISNULL(ct.commandname,N'') AS CommandName,
+                            CAST(ISNULL(s.comments, N'<comments />') AS nvarchar(max)) AS Comments,
+                            CONVERT(varchar(19), s.lastactioned, 120) AS LastActioned,
+                            ISNULL(s.business_id, 0)  AS BusinessId,
+                            ISNULL(b.businessname,N'') AS BusinessName,
+                            ISNULL(s.performactioneverytime, 0) AS PerformActionEveryTime";
+
+                if (hasGroupClients)
+                {
+                    var rows = await _context.Database.SqlQueryRaw<ScheduleRaw>(@"
+                        SELECT " + selectCols + @"
+                        FROM dbo.Schedules s
+                        LEFT JOIN dbo.GroupClients gc ON gc.group_id = s.group_id
+                                                      AND gc.client_id = {0}
+                        LEFT JOIN dbo.Groups g        ON g.group_id    = s.group_id
+                        LEFT JOIN dbo.CommandTypes ct ON ct.command_id  = s.command_id
+                        LEFT JOIN dbo.Businesses b    ON b.business_id  = s.business_id
+                        WHERE gc.client_id IS NOT NULL
+                           OR ISNULL(s.group_id, 0) = 0
+                        ORDER BY s.nextdue ASC", clientId).ToListAsync();
+
+                    return MapScheduleRaw(rows);
+                }
+                else
+                {
+                    var clientInfo = await _context.Database.SqlQueryRaw<ClientBusinessId>(@"
+                        SELECT TOP 1 business_id AS BusinessId
+                        FROM dbo.Clients
+                        WHERE client_id = {0}", clientId).FirstOrDefaultAsync();
+
+                    if (clientInfo == null)
+                        return new List<AtmScheduleDto>();
+
+                    var rows = await _context.Database.SqlQueryRaw<ScheduleRaw>(@"
+                        SELECT " + selectCols + @"
+                        FROM dbo.Schedules s
+                        LEFT JOIN dbo.Groups g        ON g.group_id    = s.group_id
+                        LEFT JOIN dbo.CommandTypes ct ON ct.command_id  = s.command_id
+                        LEFT JOIN dbo.Businesses b    ON b.business_id  = s.business_id
+                        WHERE s.business_id = {0}
+                           OR s.business_id = 0
+                        ORDER BY s.nextdue ASC", clientInfo.BusinessId).ToListAsync();
+
+                    return MapScheduleRaw(rows);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"GetClientSchedulesAsync failed: {ex.Message}");
+                throw;
+            }
+        }
+
+        public async Task CreateScheduleAsync(CreateScheduleRequest request)
+        {
+            if (request == null)
+                throw new ArgumentNullException(nameof(request));
+
+            if (string.IsNullOrWhiteSpace(request.ScheduleName))
+                throw new InvalidOperationException("Le nom du schedule est requis.");
+
+            // BusinessId peut légitimement être 0 (DEFAULT dans dbo.Schedules),
+            // on ne bloque pas ici — la FK SQL rejettera un ID vraiment absent.
+
+            // Build comments - keep it simple for now
+            var comments = request.Comments ?? "";
+
+            try
+            {
+                await _context.Database.ExecuteSqlRawAsync(@"
+                    INSERT INTO dbo.Schedules (
+                        schedulename,
+                        frequency,
+                        nextdue,
+                        group_id,
+                        command_id,
+                        commandparams,
+                        comments,
+                        lastactioned,
+                        business_id,
+                        edited_by,
+                        performactioneverytime)
+                    VALUES (
+                        {0}, {1}, {2}, {3}, {4},
+                        {5}, {6}, NULL, {7}, 0, {8})",
+                    request.ScheduleName,
+                    request.Frequency ?? "Once",
+                    request.NextDue,
+                    request.GroupId > 0 ? (object)request.GroupId : DBNull.Value,
+                    request.CommandId > 0 ? (object)request.CommandId : DBNull.Value,
+                    "<params />",  // commandparams
+                    comments,       // comments - try as text first
+                    request.BusinessId,
+                    request.PerformActionEveryTime ? 1 : 0);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"CreateScheduleAsync failed: {ex.Message}");
+                throw new InvalidOperationException($"Impossible d'insérer le schedule: {ex.Message}", ex);
+            }
+        }
+
+        public Task<List<RemoteCommandTypeDto>> GetRemoteCommandTypesAsync()
+            => _context.Database.SqlQueryRaw<RemoteCommandTypeDto>(@"
+                SELECT
+                    command_id   AS CommandId,
+                    commandname  AS CommandName,
+                    description  AS Description
+                FROM dbo.CommandTypes
+                ORDER BY commandname").ToListAsync();
+
+        public async Task<DispatchRemoteActionsResponse> DispatchRemoteActionsAsync(byte commandId, IReadOnlyList<int> clientIds, string? initiatedBy)
+        {
+            var cmdOk = await _context.Database.SqlQueryRaw<CommandIdOnly>(@"
+                SELECT command_id AS CommandId FROM dbo.CommandTypes WHERE command_id = {0}", commandId)
+                .FirstOrDefaultAsync();
+            if (cmdOk == null)
+            {
+                throw new InvalidOperationException($"Aucun type de commande pour command_id={commandId}. Vérifiez dbo.CommandTypes.");
+            }
+
+            var distinct = clientIds.Distinct().ToList();
+            var response = new DispatchRemoteActionsResponse();
+            if (distinct.Count == 0)
+            {
+                return response;
+            }
+
+            var commentsXml = BuildRemoteActionCommentsXml(initiatedBy);
+            foreach (var clientId in distinct)
+            {
+                var exists = await _context.Database.SqlQueryRaw<ClientIdOnly>(@"
+                    SELECT client_id AS ClientId FROM dbo.Clients WHERE client_id = {0}", clientId).FirstOrDefaultAsync();
+                if (exists == null)
+                {
+                    response.SkippedClientIds.Add(clientId.ToString());
+                    continue;
+                }
+
+                await _context.Database.ExecuteSqlRawAsync(@"
+                    INSERT INTO dbo.Actions (
+                        dependant_id, isendofchain, client_id, schedule_id, command_id,
+                        commandparams, starttime, endtime, status_id, comments,
+                        addedtime, retrycount, restarttime, result, progress_percent)
+                    VALUES (
+                        0, CAST(1 AS bit), {0}, 0, {1},
+                        CAST(N'<params />' AS xml), NULL, NULL, 7, CONVERT(xml, {2}),
+                        GETUTCDATE(), 0, NULL, CAST(N'<result />' AS xml), 0)",
+                    clientId, commandId, commentsXml);
+
+                response.Created++;
+            }
+
+            return response;
+        }
+
+        private static string BuildRemoteActionCommentsXml(string? initiatedBy)
+        {
+            var user = string.IsNullOrWhiteSpace(initiatedBy) ? "KTC Web" : initiatedBy.Trim();
+            var el = new XElement("Comment",
+                new XAttribute("User", user),
+                new XAttribute("TimeUtc", DateTime.UtcNow.ToString("o")),
+                "Commande à distance — interface web.");
+            return el.ToString(SaveOptions.DisableFormatting);
         }
 
         public async Task<List<ElectronicJournalEntryDto>> GetElectronicJournalAsync(int clientId, DateTime from, DateTime to)
         {
             // We don't have the EJ line table in this DB snapshot.
             // Fallback: use TransactionData_P as log-like events (timestamp + type + amounts + EJ start/end ids).
-            return await _context.Database.SqlQueryRaw<ElectronicJournalEntryDto>(@"
+            var rows = await _context.Database.SqlQueryRaw<ElectronicJournalEntryDto>(@"
                 SELECT TOP (2000)
                     t.transaction_id AS TransactionId,
                     t.transaction_timestamp AS [Timestamp],
@@ -357,6 +660,28 @@ namespace KtcWeb.Infrastructure.Repositories
                   AND t.transaction_timestamp <= {2}
                 ORDER BY t.transaction_timestamp DESC, t.transaction_id DESC",
                 clientId, from, to).ToListAsync();
+
+            // Fallback: date range returned nothing → return most recent data without date filter
+            if (rows.Count == 0)
+            {
+                rows = await _context.Database.SqlQueryRaw<ElectronicJournalEntryDto>(@"
+                    SELECT TOP (500)
+                        t.transaction_id AS TransactionId,
+                        t.transaction_timestamp AS [Timestamp],
+                        ISNULL(tt.transactiontype_name, 'Unknown') AS [Type],
+                        t.amount AS Amount,
+                        t.effective_amount AS EffectiveAmount,
+                        t.start_client_EJ_id AS EjStartId,
+                        t.end_client_EJ_id AS EjEndId
+                    FROM dbo.TransactionData_P t
+                    LEFT JOIN dbo.TransactionTypeMappings map ON map.txtype_field_lookup_id = t.txtype_field_lookup_id
+                    LEFT JOIN dbo.TransactionTypes tt ON tt.transactiontype_id = map.transactiontype_id
+                    WHERE t.client_id = {0}
+                    ORDER BY t.transaction_timestamp DESC, t.transaction_id DESC",
+                    clientId).ToListAsync();
+            }
+
+            return rows;
         }
 
         public async Task<List<LookupItemDto>> GetTransactionTypeLookupsAsync()
@@ -481,7 +806,37 @@ namespace KtcWeb.Infrastructure.Repositories
 
             sql += " ORDER BY t.transaction_timestamp DESC, t.transaction_id DESC";
 
-            return await _context.Database.SqlQueryRaw<TransactionAuditDto>(sql, args.ToArray()).ToListAsync();
+            var rows = await _context.Database.SqlQueryRaw<TransactionAuditDto>(sql, args.ToArray()).ToListAsync();
+
+            // Fallback: date-range returned nothing (dates out of sync, e.g. 2026 vs 2025 data)
+            // → retry without date filter so user sees the most recent transactions
+            if (rows.Count == 0
+                && !criteria.TransactionGuid.HasValue
+                && !criteria.TransactionId.HasValue
+                && !criteria.SessionId.HasValue)
+            {
+                var sqlFallback = @"
+                    SELECT TOP (500)
+                        t.session_id AS SessionId,
+                        t.transaction_id AS TransactionId,
+                        t.transaction_uuid AS TransactionGuid,
+                        t.transaction_timestamp AS [Timestamp],
+                        ISNULL(tl.field_code, 'Unknown') AS [Type],
+                        t.amount AS Amount,
+                        ISNULL(cl.field_code, 'Unknown') AS Completion,
+                        ISNULL(rl.field_code, 'Unknown') AS Reason,
+                        CASE WHEN t.start_client_EJ_id IS NOT NULL OR t.end_client_EJ_id IS NOT NULL
+                            THEN CAST(1 AS bit) ELSE CAST(0 AS bit) END AS HasEj
+                    FROM dbo.TransactionData_P t
+                    LEFT JOIN dbo.STX_FieldLookups tl ON tl.field_lookup_id = t.txtype_field_lookup_id
+                    LEFT JOIN dbo.STX_FieldLookups cl ON cl.field_lookup_id = t.completion_field_lookup_id
+                    LEFT JOIN dbo.STX_FieldLookups rl ON rl.field_lookup_id = t.reason_field_lookup_id
+                    WHERE t.client_id = {0}
+                    ORDER BY t.transaction_timestamp DESC, t.transaction_id DESC";
+                rows = await _context.Database.SqlQueryRaw<TransactionAuditDto>(sqlFallback, criteria.ClientId).ToListAsync();
+            }
+
+            return rows;
         }
 
         public async Task<List<VideoJournalEventDto>> SearchVideoJournalAsync(int clientId, DateTime from, DateTime to, string? search)
@@ -630,20 +985,31 @@ namespace KtcWeb.Infrastructure.Repositories
             // Use hourly aggregates from OverallAvailability_P (already seconds by state).
             // Also compute Top 5 unavailable reasons + Top 5 error codes.
 
-            var totals = await _context.Database.SqlQueryRaw<AvailabilityTotalsRaw>(@"
+            // Check which OverallAvailability table exists
+            var hasP = await TableExistsAsync("OverallAvailability_P");
+            var hasS = await TableExistsAsync("OverallAvailability_S");
+            var availTable = hasP ? "OverallAvailability_P" : (hasS ? "OverallAvailability_S" : "OverallAvailability_P");
+
+            // Check for timestmp column variants
+            var hasTimestmp = await ColumnExistsAsync(availTable, "timestmp");
+            var hasTimestmpLocal = await ColumnExistsAsync(availTable, "timestmp_local");
+            var timestmpCol = hasTimestmp ? "timestmp" : (hasTimestmpLocal ? "timestmp_local" : "timestmp");
+
+#pragma warning disable EF1002 // table/column names derived from internal DB checks — not user input
+            var totals = await _context.Database.SqlQueryRaw<AvailabilityTotalsRaw>($@"
                 SELECT
-                    SUM(CAST(sec_is  AS int)) AS SecIs,
-                    SUM(CAST(sec_oos AS int)) AS SecOos,
-                    SUM(CAST(sec_ls  AS int)) AS SecLs,
-                    SUM(CAST(sec_rs  AS int)) AS SecRs,
-                    SUM(CAST(sec_sus AS int)) AS SecSus,
-                    SUM(CAST(sec_fb  AS int)) AS SecFb,
-                    SUM(CAST(sec_anr AS int)) AS SecAnr,
-                    SUM(CAST(sec_knr AS int)) AS SecKnr
-                FROM dbo.OverallAvailability_P
-                WHERE client_id = {0}
-                  AND timestmp >= {1}
-                  AND timestmp <= {2}", clientId, from, to).FirstOrDefaultAsync();
+                    COALESCE(SUM(CAST(sec_is  AS int)), 0) AS SecIs,
+                    COALESCE(SUM(CAST(sec_oos AS int)), 0) AS SecOos,
+                    COALESCE(SUM(CAST(sec_ls  AS int)), 0) AS SecLs,
+                    COALESCE(SUM(CAST(sec_rs  AS int)), 0) AS SecRs,
+                    COALESCE(SUM(CAST(sec_sus AS int)), 0) AS SecSus,
+                    COALESCE(SUM(CAST(sec_fb  AS int)), 0) AS SecFb,
+                    COALESCE(SUM(CAST(sec_anr AS int)), 0) AS SecAnr,
+                    COALESCE(SUM(CAST(sec_knr AS int)), 0) AS SecKnr
+                FROM dbo.{availTable}
+                WHERE client_id = {{0}}
+                  AND {timestmpCol} >= {{1}}
+                  AND {timestmpCol} <= {{2}}", clientId, from, to).FirstOrDefaultAsync();
 
             totals ??= new AvailabilityTotalsRaw();
 
@@ -680,21 +1046,17 @@ namespace KtcWeb.Infrastructure.Repositories
                 .OrderByDescending(x => x.Seconds)
                 .ToList();
 
-            var topUnavailableReasons = await _context.Database.SqlQueryRaw<UnavailableReasonRaw>(@"
+            var topUnavailableReasons = await _context.Database.SqlQueryRaw<UnavailableReasonRaw>($@"
                 SELECT TOP (5)
                     our.una_reason_id AS ReasonId,
                     ISNULL(ur.una_reason_message, 'Unknown') AS Reason,
                     SUM(CAST(our.sec_duration AS int)) AS Seconds
                 FROM dbo.OverallUnavailableReasons_P our
                 LEFT JOIN dbo.UnavailableReasons ur ON ur.una_reason_id = our.una_reason_id
-                WHERE our.timestmp >= {0}
-                  AND our.timestmp <= {1}
-                  AND EXISTS (
-                      SELECT 1
-                      FROM dbo.OverallAvailability_P oa
-                      WHERE oa.overall_avail_id = our.overall_avail_id
-                        AND oa.client_id = {2}
-                  )
+                INNER JOIN dbo.{availTable} oa ON oa.overall_avail_id = our.overall_avail_id
+                WHERE oa.client_id = {{2}}
+                  AND oa.{timestmpCol} >= {{0}}
+                  AND oa.{timestmpCol} <= {{1}}
                 GROUP BY our.una_reason_id, ur.una_reason_message
                 ORDER BY SUM(CAST(our.sec_duration AS int)) DESC", from, to, clientId).ToListAsync();
 
@@ -710,19 +1072,33 @@ namespace KtcWeb.Infrastructure.Repositories
                 .ToList();
 
             // Error codes: clamp opened/closed to [from,to] and sum seconds impact.
-            var topErrorCodes = await _context.Database.SqlQueryRaw<ErrorCodeRaw>(@"
+            // Detect which error codes table exists
+            var errorTables = new[] { "HistoricalErrorCodes_P_8129", "HistoricalErrorCodes_NU_P", "HistoricalErrorCodes_P" };
+            var errorTable = "";
+            foreach (var et in errorTables)
+            {
+                if (await TableExistsAsync(et))
+                {
+                    errorTable = et;
+                    break;
+                }
+            }
+
+            var topErrorCodes = string.IsNullOrEmpty(errorTable)
+                ? new List<ErrorCodeRaw>()
+                : await _context.Database.SqlQueryRaw<ErrorCodeRaw>($@"
                 WITH R AS (
                     SELECT
                         he.errorcodetype_id AS ErrorCodeTypeId,
-                        CASE WHEN he.timestamp_opened < {0} THEN {0} ELSE he.timestamp_opened END AS StartTs,
+                        CASE WHEN he.timestamp_opened < {{0}} THEN {{0}} ELSE he.timestamp_opened END AS StartTs,
                         CASE
-                            WHEN he.timestamp_closed IS NULL OR he.timestamp_closed > {1} THEN {1}
+                            WHEN he.timestamp_closed IS NULL OR he.timestamp_closed > {{1}} THEN {{1}}
                             ELSE he.timestamp_closed
                         END AS EndTs
-                    FROM dbo.HistoricalErrorCodes_P_8129 he
-                    WHERE he.client_id = {2}
-                      AND he.timestamp_opened < {1}
-                      AND (he.timestamp_closed IS NULL OR he.timestamp_closed > {0})
+                    FROM dbo.{errorTable} he
+                    WHERE he.client_id = {{2}}
+                      AND he.timestamp_opened < {{1}}
+                      AND (he.timestamp_closed IS NULL OR he.timestamp_closed > {{0}})
                 )
                 SELECT TOP (5)
                     r.ErrorCodeTypeId,
@@ -734,6 +1110,7 @@ namespace KtcWeb.Infrastructure.Repositories
                 GROUP BY r.ErrorCodeTypeId, ect.errorcode, ect.errortext
                 ORDER BY SUM(CASE WHEN DATEDIFF(SECOND, r.StartTs, r.EndTs) > 0 THEN DATEDIFF(SECOND, r.StartTs, r.EndTs) ELSE 0 END) DESC",
                 from, to, clientId).ToListAsync();
+#pragma warning restore EF1002
 
             var topErrorDtos = topErrorCodes
                 .Select(e => new ErrorCodeMetricDto
@@ -1073,25 +1450,35 @@ namespace KtcWeb.Infrastructure.Repositories
             public long ActionId { get; set; }
             public string? CommandName { get; set; }
             public byte StatusId { get; set; }
-            public DateTime? Started { get; set; }
-            public DateTime? Finished { get; set; }
+            public string? AddedTime { get; set; }
+            public string? Started { get; set; }
+            public string? Finished { get; set; }
             public string? CommentsXml { get; set; }
+        }
+
+        private sealed class CommandIdOnly
+        {
+            public byte CommandId { get; set; }
+        }
+
+        private sealed class ClientIdOnly
+        {
+            public int ClientId { get; set; }
         }
 
         private static string MapActionStatus(byte statusId)
         {
-            // Observed in DB:
-            // 3 -> completed
-            // 6 -> cancelled
+            // Aligné sur MS_Description de dbo.Actions.status_id (schéma KTC).
             return statusId switch
             {
-                0 => "Pending",
-                1 => "Queued",
-                2 => "Running",
+                1 => "Pending",
+                2 => "In Progress",
                 3 => "Completed",
-                4 => "Failed",
-                5 => "Retrying",
+                4 => "Error",
+                5 => "Timeout",
                 6 => "Cancelled",
+                7 => "Immediate",
+                8 => "Scheduled",
                 _ => $"Status {statusId}"
             };
         }
@@ -1123,5 +1510,3 @@ namespace KtcWeb.Infrastructure.Repositories
         }
     }
 }
-
-

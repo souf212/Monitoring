@@ -1,9 +1,11 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, OnDestroy, NgZone, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
-import { finalize } from 'rxjs';
+import { Subject, finalize } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
 import { AtmService } from '../services/atm.service';
+import { AtmRealtimeService } from '../services/atm-realtime.service';
 import { AtmAvailabilityReportDto } from '../models/atm.models';
 
 @Component({
@@ -13,10 +15,13 @@ import { AtmAvailabilityReportDto } from '../models/atm.models';
   templateUrl: './atm-availability.component.html',
   styleUrl: './atm-availability.component.css'
 })
-export class AtmAvailabilityComponent {
+export class AtmAvailabilityComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly atmService = inject(AtmService);
   private readonly fb = inject(FormBuilder);
+  private readonly realtimeService = inject(AtmRealtimeService);
+  private readonly ngZone = inject(NgZone);
+  private readonly destroy$ = new Subject<void>();
 
   readonly clientId = computed(() => Number(this.route.parent?.snapshot.paramMap.get('id') ?? this.route.snapshot.paramMap.get('id') ?? 0));
 
@@ -36,6 +41,22 @@ export class AtmAvailabilityComponent {
       to: this.toLocalInput(now)
     });
     this.refresh();
+    this.subscribeToRealtimeUpdates(this.clientId());
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  private subscribeToRealtimeUpdates(clientId: number): void {
+    // Availability is computed from AssetHistory — reuse the existing signal
+    this.realtimeService.assetHistoryUpdates$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(update => {
+        if (update.clientId !== clientId) return;
+        this.ngZone.run(() => this.refresh());
+      });
   }
 
   refresh(): void {

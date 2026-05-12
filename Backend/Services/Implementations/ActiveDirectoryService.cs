@@ -30,23 +30,78 @@ namespace KtcWeb.Infrastructure.ExternalServices
 {
     try
     {
-        Console.WriteLine($"[DEBUG Auth] Tentative pour {username} sur domaine {_domainName}");
+        Console.WriteLine($"[DEBUG Auth] Tentative pour '{username}' sur domaine '{_domainName}'");
+        Console.WriteLine($"[DEBUG Auth] Username length={username.Length}, Password length={password.Length}");
 
         using (var context = new PrincipalContext(ContextType.Domain, _domainName))
         {
-            // Priorité Negotiate (Kerberos) → beaucoup plus sécurisé et performant
-            bool success = context.ValidateCredentials(username, password, ContextOptions.Negotiate);
-            
-            if (!success)
-                success = context.ValidateCredentials(username, password, ContextOptions.SimpleBind);
+            Console.WriteLine($"[DEBUG Auth] PrincipalContext créé avec succès → domaine accessible");
 
-            Console.WriteLine($"[DEBUG Auth] Résultat ValidateCredentials : {success}");
+            // Tenter avec Negotiate (Kerberos/NTLM)
+            bool success = false;
+            try
+            {
+                success = context.ValidateCredentials(username, password, ContextOptions.Negotiate);
+                Console.WriteLine($"[DEBUG Auth] Negotiate → {success}");
+            }
+            catch (Exception ex1)
+            {
+                Console.WriteLine($"[DEBUG Auth] Negotiate échoué : {ex1.Message}");
+            }
+
+            // Fallback SimpleBind (LDAP)
+            if (!success)
+            {
+                try
+                {
+                    success = context.ValidateCredentials(username, password, ContextOptions.SimpleBind);
+                    Console.WriteLine($"[DEBUG Auth] SimpleBind → {success}");
+                }
+                catch (Exception ex2)
+                {
+                    Console.WriteLine($"[DEBUG Auth] SimpleBind échoué : {ex2.Message}");
+                }
+            }
+
+            // Diagnostic supplémentaire si échec
+            if (!success)
+            {
+                Console.WriteLine("[DEBUG Auth] ── Vérification du compte ──────────────────────────────");
+                try
+                {
+                    // Tente de trouver l'utilisateur sans auth pour vérifier s'il existe
+                    // (nécessite que le serveur soit accessible, ce qui est déjà prouvé)
+                    using var readCtx = new PrincipalContext(ContextType.Domain, _domainName);
+                    var userPrincipal = UserPrincipal.FindByIdentity(readCtx, IdentityType.SamAccountName, username);
+                    if (userPrincipal == null)
+                    {
+                        Console.WriteLine($"[DEBUG Auth] ❌ COMPTE INTROUVABLE : '{username}' n'existe pas dans AD.");
+                        Console.WriteLine("[DEBUG Auth]    → Vérifiez le SamAccountName dans ADUC (onglet Compte du user)");
+                    }
+                    else
+                    {
+                        Console.WriteLine($"[DEBUG Auth] ✅ Compte trouvé : SamAccountName='{userPrincipal.SamAccountName}'");
+                        Console.WriteLine($"[DEBUG Auth]    DisplayName='{userPrincipal.DisplayName}'");
+                        Console.WriteLine($"[DEBUG Auth]    Enabled={userPrincipal.Enabled}");
+                        Console.WriteLine($"[DEBUG Auth]    AccountExpires={userPrincipal.AccountExpirationDate?.ToString() ?? "jamais"}");
+                        Console.WriteLine($"[DEBUG Auth]    IsAccountLockedOut={userPrincipal.IsAccountLockedOut()}");
+                        Console.WriteLine("[DEBUG Auth]    → Le compte existe mais le MOT DE PASSE est incorrect.");
+                    }
+                }
+                catch (Exception diagEx)
+                {
+                    Console.WriteLine($"[DEBUG Auth] Impossible de lire le compte sans auth : {diagEx.Message}");
+                    Console.WriteLine("[DEBUG Auth]    → Probable : mot de passe incorrect.");
+                }
+            }
+
+            Console.WriteLine($"[DEBUG Auth] Résultat final : {success}");
             return success;
         }
     }
     catch (Exception ex)
     {
-        Console.WriteLine($"[AD Auth ERROR] {ex.Message}");
+        Console.WriteLine($"[AD Auth ERROR] {ex.GetType().Name} : {ex.Message}");
         if (ex.InnerException != null)
             Console.WriteLine($"   InnerException: {ex.InnerException.Message}");
         return false;

@@ -3,11 +3,12 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { AtmService, AtmTicketDto } from '../services/atm.service';
+import { ExportButtonComponent } from '../../../shared/components/export-button/export-button.component';
 
 @Component({
   selector: 'app-atm-tickets',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, ExportButtonComponent],
   templateUrl: './atm-tickets.component.html',
   styleUrls: ['./atm-tickets.component.css']
 })
@@ -30,9 +31,29 @@ export class AtmTicketsComponent implements OnInit {
   tickets = signal<AtmTicketDto[]>([]);
 
   // Computed values
-  displayedTickets = computed(() => {
-    return this.tickets();
-  });
+  displayedTickets = computed(() => this.tickets());
+
+  /** Flat export-friendly representation for Excel */
+  exportData = computed(() =>
+    this.tickets().map(t => ({
+      'Ticket ID':         t.ticketId,
+      'Type Ticket':       t.ticketType ?? '',
+      'Nom Client':        t.clientName ?? '',
+      'Créé le':           t.created ?? '',
+      'Fermé':             t.isClosed ? 'Oui' : 'Non',
+      'Durée':             t.duration ?? '',
+      'Statut':            t.status ?? '',
+      'ID Erreur':         t.errorId ?? '',
+      'Code':              t.code ?? '',
+      'Texte Erreur':      t.errorText ?? '',
+      'Propriétaire':      t.owner ?? '',
+      'Dernière Modif.':   t.lastChangeBy ?? '',
+      'Date Modif.':       t.lastChangeDate ?? '',
+      'Dernier Comm.':     t.lastComment ?? '',
+      'SLA':               t.slaSummary ?? '',
+      'Dispensé à':        t.dispatchedTo ?? ''
+    }))
+  );
 
   // Effect to reload tickets when filters or atmId change
   private ticketsEffect = effect(() => {

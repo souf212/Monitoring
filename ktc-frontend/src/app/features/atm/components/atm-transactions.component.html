@@ -99,12 +99,25 @@
   <div class="card results">
     <div class="results-head">
       <div class="muted">
-        Results: <strong>{{ results().length }}</strong>
+        @if (isSearching()) {
+          <div class="inline-loading">
+            <div class="spinner"></div>
+            <span>Recherche en cours…</span>
+          </div>
+        } @else {
+          Résultats : <strong>{{ results().length }}</strong>
+          @if (results().length > 0) {
+            <span style="font-size:11px;color:#888;margin-left:6px">
+              (les 500 plus récents si aucune donnée dans la plage sélectionnée)
+            </span>
+          }
+        }
       </div>
-      <div *ngIf="isSearching()" class="inline-loading">
-        <div class="spinner"></div>
-        <span>Searching…</span>
-      </div>
+      <app-export-button
+        [data]="exportData()"
+        [fileName]="'transactions_atm' + clientId()"
+        [sheetName]="'Transactions'"
+      />
     </div>
 
     <div class="table-wrap">

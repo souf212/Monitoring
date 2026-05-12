@@ -252,9 +252,115 @@ export interface AtmActionDto {
   user: string;
   command: string;
   status: string;
+  /** dbo.Actions.addedtime (UTC) — toujours renseigné pour une nouvelle action en file */
+  addedTime?: string | null;
   started?: string | null;
   finished?: string | null;
   lastComment: string;
+}
+
+export interface AtmScheduleDto {
+  scheduleId: number;
+  scheduleName: string;
+  frequency: string;
+  nextDue: string;
+  groupId: number;
+  groupName: string;
+  commandId: number;
+  commandName: string;
+  comments: string;
+  lastActioned?: string | null;
+  businessId: number;
+  businessName: string;
+  performActionEveryTime: boolean;
+}
+
+export interface CreateScheduleRequest {
+  scheduleName: string;
+  frequency: string;
+  nextDue: string;
+  groupId: number;
+  commandId: number;
+  comments?: string;
+  businessId: number;
+  performActionEveryTime: boolean;
+}
+
+/** Réponse API GET clients/{id}/actions : historique dbo.Actions + utilisateurs pour filtre */
+export interface AtmActionsResponseDto {
+  items: AtmActionDto[];
+  addedByUsers: string[];
+}
+
+export interface AtmUploadDto {
+  actionId: number;
+  fileLocation: string;
+  fileName?: string;
+  fileType: number;
+  fileTypeLabel?: string;
+  commandName?: string;
+  scheduleName?: string;
+  status?: string;
+  addedTime?: string | null;
+  comments?: string | null;
+}
+
+/** Ligne dbo.CommandTypes — libellés dynamiques (Refresh, Reboot, … selon la base). */
+export interface RemoteCommandTypeDto {
+  commandId: number;
+  commandName: string;
+  description: string;
+}
+
+/** Paramètres spécifiques pour Upload Trace */
+export interface UploadTraceParams {
+  traceType?: string;  // ex: 'Active Trace'
+  timeFilterType?: 'last30min' | 'last1hour' | 'custom';
+  customFilterValue?: string;
+}
+
+/** Paramètres spécifiques pour Upload Trace Backup */
+export interface UploadTraceBackupParams {
+  startDate?: string;  // ISO format
+  endDate?: string;    // ISO format
+}
+
+/** Paramètres spécifiques pour Upload Event Log */
+export interface UploadEventLogParams {
+  logType?: 'Application' | 'System' | 'Other' | 'CustomFilter';
+  customFilter?: string;
+}
+
+/** Paramètres spécifiques pour Upload Registry */
+export interface UploadRegistryParams {
+  registryKeyName?: string;
+}
+
+/** Paramètres spécifiques pour Upload File (fichier simple) */
+export interface UploadFileParams {
+  fileName?: string;
+  fileSize?: number;
+}
+
+/** Paramètres d'upload — chaque type peut être null si pas de paramètres */
+export interface UploadCommandParams {
+  file?: UploadFileParams;
+  trace?: UploadTraceParams;
+  traceBackup?: UploadTraceBackupParams;
+  eventLog?: UploadEventLogParams;
+  registry?: UploadRegistryParams;
+}
+
+export interface DispatchRemoteActionsRequest {
+  commandId: number;
+  clientIds: number[];
+  initiatedBy?: string;
+  uploadParams?: UploadCommandParams;
+}
+
+export interface DispatchRemoteActionsResponse {
+  created: number;
+  skippedClientIds: string[];
 }
 
 export interface ElectronicJournalEntryDto {
@@ -353,4 +459,93 @@ export interface AtmAvailabilityReportDto {
   topUnavailableReasons: UnavailableReasonMetricDto[];
   topErrorCodes: ErrorCodeMetricDto[];
   coveringText: string;
+}
+
+export interface CashUnitStatusDto {
+  cashUnitId: number;
+  typeName: string;
+  statusName: string;
+  timestamp: string;
+  currencyCode: string;
+  currencyValue: number;
+  unitCount: number;
+  totalValue: number;
+}
+
+export interface CashUnitSummaryDto {
+  componentId: number;
+  componentName: string;
+  cashUnits: CashUnitStatusDto[];
+  totalCashValue: number;
+}
+
+export interface CassetteDenominationCountDto {
+  currencyCode: string;
+  denomination: number;
+  count: number;
+  totalValue: number;
+}
+
+export interface PhysicalCassetteDto {
+  cassetteId: number;
+  componentId: number;
+  position: string;
+  typeName: string;
+  currentStatus: string;
+  lastStatusUpdate: string;
+  isReported: boolean;
+  denominations: CassetteDenominationCountDto[];
+}
+
+export interface CassetteSummaryDto {
+  componentId: number;
+  componentName: string;
+  cassettes: PhysicalCassetteDto[];
+  totalCassettes: number;
+  healthyCassettes: number;
+  lowCassettes: number;
+  emptyCassettes: number;
+}
+
+export interface AtmCashCassetteOverviewDto {
+  clientId: number;
+  clientName: string;
+  cashUnitsByComponent: CashUnitSummaryDto[];
+  cassettesByComponent: CassetteSummaryDto[];
+  totalCashValue: number;
+  lastUpdated: string;
+}
+
+export interface CashHistoryEntryDto {
+  timestamp: string;
+  previousTotal: number;
+  currentTotal: number;
+  change: number;
+  previousUnitCount: number;
+  currentUnitCount: number;
+}
+
+export interface CashFlowReportDto {
+  clientId: number;
+  componentId: number;
+  componentName: string;
+  currencyCode: string;
+  currentTotal: number;
+  lastUpdate?: string | null;
+  historicalChanges: CashHistoryEntryDto[];
+}
+
+export interface CashUnitHistoryRowDto {
+  clientId: number;
+  componentId: number;
+  componentName: string;
+  cashUnitId: number;
+  typeName: string;
+  statusName: string;
+  timestamp: string;
+  currencyCode: string;
+  currencyValue: number;
+  unitCount: number;
+  totalValue: number;
+  addedTime?: string | null;
 }

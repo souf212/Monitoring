@@ -1,7 +1,10 @@
-import { Component, Input, OnInit, inject, signal } from '@angular/core';
+import { Component, Input, OnInit, OnDestroy, inject, signal, NgZone } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
 import { AtmService, AtmAssetHistoryDto } from '../services/atm.service';
+import { AtmRealtimeService } from '../services/atm-realtime.service';
+import { Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
 
 @Component({
   selector: 'app-atm-asset-history',
@@ -10,11 +13,14 @@ import { AtmService, AtmAssetHistoryDto } from '../services/atm.service';
   templateUrl: './atm-asset-history.component.html',
   styleUrls: ['./atm-asset-history.component.css']
 })
-export class AtmAssetHistoryComponent implements OnInit {
+export class AtmAssetHistoryComponent implements OnInit, OnDestroy {
   @Input() clientId?: number;
   
   private route = inject(ActivatedRoute);
   private atmService = inject(AtmService);
+  private realtimeService = inject(AtmRealtimeService);
+  private ngZone = inject(NgZone);
+  private destroy$ = new Subject<void>();
 
   isLoading = signal(true);
   error = signal<string | null>(null);
@@ -31,10 +37,28 @@ export class AtmAssetHistoryComponent implements OnInit {
 
     if (finalId) {
       this.loadHistory(finalId);
+      this.subscribeToRealtimeUpdates(finalId);
     } else {
       this.error.set("Aucun identifiant d'ATM fourni.");
       this.isLoading.set(false);
     }
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  private subscribeToRealtimeUpdates(clientId: number): void {
+    this.realtimeService.assetHistoryUpdates$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(update => {
+        if (update.clientId !== clientId) return;
+        this.ngZone.run(() => {
+          // Reload history when new asset history record is added
+          this.loadHistory(clientId);
+        });
+      });
   }
 
   loadHistory(id: number): void {

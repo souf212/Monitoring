@@ -1,4 +1,5 @@
-
+using System.Text.Json;
+using KtcWeb.Hubs;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
@@ -9,6 +10,16 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+builder.Services.AddSignalR()
+    .AddJsonProtocol(options =>
+    {
+        options.PayloadSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+    });
+builder.Services.AddHostedService<AtmDatabaseListenerService>();
+builder.Services.AddHostedService<StatusDatabaseListenerService>();
+builder.Services.AddHostedService<CashDatabaseListenerService>();
+builder.Services.AddHostedService<JournalDatabaseListenerService>();
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("FrontendPolicy", policy =>
@@ -16,15 +27,24 @@ builder.Services.AddCors(options =>
         policy
             .WithOrigins("http://localhost:4200", "https://localhost:4200")
             .AllowAnyHeader()
-            .AllowAnyMethod();
+            .AllowAnyMethod()
+            // SignalR (negotiate / fetch) peut utiliser credentials; le navigateur exige alors AllowCredentials côté API.
+            .AllowCredentials();
     });
 });
 
 // Injection de dépendance
-builder.Services.AddSingleton<ActiveDirectoryService>();
+builder.Services.AddScoped<ActiveDirectoryService>();
 builder.Services.AddScoped<IAtmRepository, AtmRepository>();
 builder.Services.AddScoped<IAtmAdminRepository, AtmAdminRepository>();
 builder.Services.AddScoped<IAtmApplicationService, AtmApplicationService>();
+builder.Services.AddScoped<ICashCassetteRepository, CashCassetteRepository>();
+builder.Services.AddScoped<ICashCassetteService, CashCassetteService>();
+builder.Services.AddScoped<INocDashboardService, NocDashboardService>();
+builder.Services.AddScoped<ICampaignRepository, CampaignRepository>();
+builder.Services.AddScoped<ICampaignService, CampaignService>();
+builder.Services.AddScoped<IGroupRepository, GroupRepository>();
+builder.Services.AddScoped<IGroupService, GroupService>();
 // === AJOUT POUR LA BASE KTC ===
 // === CONNEXION BASE DE DONNÉES KTC ===
 builder.Services.AddDbContext<KtcDbContext>(options =>
@@ -46,11 +66,47 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateIssuerSigningKey = true,
             ValidIssuer = builder.Configuration["Jwt:Issuer"] ?? "KtcWeb",
             ValidAudience = builder.Configuration["Jwt:Audience"] ?? "KtcWeb",
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret))
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
+            ClockSkew = TimeSpan.FromMinutes(1),
+            // Map the .NET ClaimTypes.Role URI to the role claim name
+            RoleClaimType = System.Security.Claims.ClaimTypes.Role
+        };
+
+        // SignalR WebSocket : le client @microsoft/signalr envoie le JWT via ?access_token=…
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                var accessToken = context.Request.Query["access_token"];
+                var path = context.HttpContext.Request.Path;
+                if (!string.IsNullOrEmpty(accessToken) &&
+                    path.StartsWithSegments("/hubs"))
+                {
+                    context.Token = accessToken;
+                }
+
+                return Task.CompletedTask;
+            }
         };
     });
 
+// ─── RBAC Policies ─────────────────────────────────────────────────────────
+// RequireReadOnly : lecture seule — Admin_ReadOnly OU Support_FullAccess
+// RequireWrite    : écriture — Support_FullAccess uniquement
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("RequireReadOnly", policy =>
+        policy.RequireAssertion(ctx =>
+            ctx.User.IsInRole("Admin_ReadOnly") ||
+            ctx.User.IsInRole("Support_FullAccess")));
+
+    options.AddPolicy("RequireWrite", policy =>
+        policy.RequireRole("Support_FullAccess"));
+});
+
 var app = builder.Build();
+
+app.UseMiddleware<KtcWeb.Api.Middleware.GlobalExceptionMiddleware>();
 
 if (app.Environment.IsDevelopment())
 {
@@ -61,13 +117,16 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseCors("FrontendPolicy");
 
-app.UseAuthentication();   // ← Important : doit être avant UseAuthorization
+app.UseAuthentication();   
 app.UseAuthorization();
 
 app.MapControllers();
+
+app.MapHub<KtcMonitoringHub>("/hubs/monitoring")
+    .RequireAuthorization();
 
 app.MapGet("/", () => Results.Redirect("/swagger"));
 
 app.Run();
 
-
+public partial class Program { }

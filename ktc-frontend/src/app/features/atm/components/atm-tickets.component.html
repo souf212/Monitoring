@@ -40,10 +40,24 @@
             <option value="Closed">Fermés</option>
           </select>
         </div>
+
+        <!-- Export Button -->
+        <div class="filter-group toolbar-export">
+          <app-export-button
+            [data]="exportData()"
+            [fileName]="'tickets_atm_' + (atmId() ?? 0)"
+            [sheetName]="'Tickets'"
+          />
+        </div>
       </div>
 
-      <!-- Title -->
-      <h3 class="panel-title">Tickets des Incidents</h3>
+      <!-- Title with row count -->
+      <h3 class="panel-title">
+        Tickets des Incidents
+        @if (displayedTickets().length > 0) {
+          <span class="row-count">{{ displayedTickets().length }} ticket(s)</span>
+        }
+      </h3>
 
       <!-- Data Grid / Table -->
       <div class="table-container">

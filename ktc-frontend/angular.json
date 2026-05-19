@@ -19,6 +19,16 @@
           "options": {
             "browser": "src/main.ts",
             "tsConfig": "tsconfig.app.json",
+            "allowedCommonJsDependencies": [
+              "jspdf",
+              "jspdf-autotable",
+              "html2canvas",
+              "dompurify",
+              "canvg",
+              "rgbcolor",
+              "raf",
+              "core-js"
+            ],
             "assets": [
               {
                 "glob": "**/*",
@@ -31,18 +41,18 @@
           },
           "configurations": {
             "production": {
-              "budgets": [
-                {
-                  "type": "initial",
-                  "maximumWarning": "500kB",
-                  "maximumError": "1MB"
-                },
-                {
-                  "type": "anyComponentStyle",
-                  "maximumWarning": "10kB",
-                  "maximumError": "20kB"
-                }
-              ],
+"budgets": [
+  {
+    "type": "initial",
+    "maximumWarning": "2mb",
+    "maximumError": "5mb"
+  },
+  {
+    "type": "anyComponentStyle",
+    "maximumWarning": "20kb",
+    "maximumError": "40kb"
+  }
+],
               "outputHashing": "all"
             },
             "development": {
@@ -60,7 +70,8 @@
               "buildTarget": "ktc-frontend:build:production"
             },
             "development": {
-              "buildTarget": "ktc-frontend:build:development"
+              "buildTarget": "ktc-frontend:build:development",
+              "proxyConfig": "proxy.conf.js"
             }
           },
           "defaultConfiguration": "development"

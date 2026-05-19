@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(Get-ChildItem \"c:\\\\Users\\\\souf2\\\\Desktop\\\\Github\\\\Monitoring\\\\ktc-frontend\\\\src\" -Recurse -Directory | Select-Object -First 25 | ForEach-Object { $_.FullName.Replace\\(\"c:\\\\Users\\\\souf2\\\\Desktop\\\\Github\\\\Monitoring\\\\ktc-frontend\\\\src\\\\\", \"\"\\) })"
+    ]
+  }
+}

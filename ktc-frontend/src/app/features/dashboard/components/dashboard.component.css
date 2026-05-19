@@ -639,3 +639,89 @@
   .table-search     { width: 100%; }
   .skeleton-grid    { grid-template-columns: 1fr 1fr; }
 }
+
+/* ── Grafana Embed ────────────────────────────────────────────────────────── */
+.grafana-page {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  padding: 16px;
+  box-sizing: border-box;
+  background: #0f172a;
+  gap: 12px;
+}
+
+.grafana-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.grafana-header__left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.grafana-badge {
+  background: linear-gradient(135deg, #1d4ed8, #7c3aed);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  text-transform: uppercase;
+}
+
+.grafana-title {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #f1f5f9;
+}
+
+.range-pills {
+  display: flex;
+  gap: 4px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  padding: 3px;
+}
+
+.range-pill {
+  padding: 5px 14px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #94a3b8;
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+
+.range-pill.active,
+.range-pill:hover {
+  background: rgba(255,255,255,0.1);
+  color: #e2e8f0;
+}
+
+.grafana-container {
+  flex: 1;
+  min-height: 0;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.07);
+}
+
+.grafana-frame {
+  width: 100%;
+  height: 100%;
+  border: none;
+  display: block;
+}

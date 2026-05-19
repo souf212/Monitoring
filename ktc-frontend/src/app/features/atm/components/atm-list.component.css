@@ -531,7 +531,7 @@
   color: #991B1B;
 }
 
-/* ── Badge lecture seule (Admin_ReadOnly) ─────────────────────────────────── */
+/* ── Badge lecture seule (Superviseur) ─────────────────────────────────── */
 .badge-readonly {
   display: inline-flex;
   align-items: center;

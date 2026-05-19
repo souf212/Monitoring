@@ -20,5 +20,10 @@ namespace KtcWeb.Application.DTOs
         public bool? Interactive { get; set; }
         public int? MaxShowMeLaterShows { get; set; }
         public int? ShowMeLaterRestHours { get; set; }
+
+        /// <summary>
+        /// Liste des business IDs à associer à cette campagne (CampaignBusinesses)
+        /// </summary>
+        public List<int>? BusinessIds { get; set; }
     }
 }

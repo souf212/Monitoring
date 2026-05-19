@@ -14,6 +14,11 @@
       [fileName]="'electronic_journal_atm' + (clientId() ?? 0)"
       [sheetName]="'Electronic Journal'"
     />
+    <app-export-pdf-button
+      [data]="exportData()"
+      [fileName]="'electronic_journal_atm' + (clientId() ?? 0)"
+      [title]="'Journal Électronique ATM #' + (clientId() ?? 0)"
+    />
   </div>
 
   @if (isLoading()) {

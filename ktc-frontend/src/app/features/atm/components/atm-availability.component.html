@@ -19,6 +19,16 @@
       <button type="button" class="btn btn-primary" (click)="refresh()" [disabled]="isLoading()">
         Refresh
       </button>
+      <app-export-button
+        [data]="exportData()"
+        [fileName]="'availability_atm' + (clientId())"
+        [sheetName]="'Availability'"
+      />
+      <app-export-pdf-button
+        [data]="exportData()"
+        [fileName]="'availability_atm' + (clientId())"
+        [title]="'Rapport de Disponibilité ATM #' + (clientId())"
+      />
     </form>
   </div>
 

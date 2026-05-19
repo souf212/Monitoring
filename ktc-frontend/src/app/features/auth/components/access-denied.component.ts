@@ -37,7 +37,7 @@ import { CommonModule } from '@angular/common';
         <!-- Rôles manquants -->
         <div class="denied-hint">
           <span class="hint-icon">🔐</span>
-          Cette action requiert le rôle <code>Support_FullAccess</code>
+          Cette action requiert le rôle <code>Support</code>
         </div>
 
         <!-- Actions -->
@@ -207,8 +207,8 @@ export class AccessDeniedComponent {
   private readonly router = inject(Router);
 
   roleLabel = () => {
-    if (this.auth.isSupport()) return 'Support_FullAccess';
-    if (this.auth.isReadOnly()) return 'Admin_ReadOnly (Lecture seule)';
+    if (this.auth.isSupport()) return 'Support';
+    if (this.auth.isReadOnly()) return 'Superviseur (Lecture seule)';
     return 'Aucun rôle assigné';
   };
 
@@ -216,3 +216,4 @@ export class AccessDeniedComponent {
     window.history.back();
   }
 }
+

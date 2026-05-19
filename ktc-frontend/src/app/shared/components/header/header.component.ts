@@ -21,26 +21,22 @@ export class HeaderComponent implements OnDestroy {
   roles = this.authService.currentUserRoles;
   user  = this.authService.currentUser;
 
-  isProfileOpen = signal(false);
+  isProfileOpen    = signal(false);
+  isConfigMenuOpen = signal(false);
 
   // ─── SESSION COUNTDOWN ──────────────────────────────────────────────────────
-  // Temps restant formaté ex: "1h 42m" ou "8m 30s" (sous les 10 min)
   sessionCountdown = signal<string>('—');
-  // Passe à true quand il reste moins de 10 minutes → topbar vire au jaune
   sessionWarning   = signal<boolean>(false);
 
   private sessionTimer: ReturnType<typeof setInterval> | null = null;
 
   private startSessionCountdown(): void {
-    // Récupère le token via AuthService (clé localStorage : 'jwt_token')
     const token = this.authService.getToken();
     if (!token) return;
 
-    // Décode le payload (même pattern que AuthService)
     try {
       const payload = JSON.parse(atob(token.split('.')[1]));
       if (!payload.exp) {
-        // Token sans exp → durée fixe 2h depuis maintenant comme fallback
         const fallbackExp = Math.floor(Date.now() / 1000) + 7200;
         payload.exp = fallbackExp;
       }
@@ -53,8 +49,6 @@ export class HeaderComponent implements OnDestroy {
           this.sessionCountdown.set('Expirée');
           this.sessionWarning.set(true);
           this.stopSessionCountdown();
-          // Optionnel : déconnecter automatiquement
-          // this.authService.logout();
           return;
         }
 
@@ -63,7 +57,6 @@ export class HeaderComponent implements OnDestroy {
         const minutes  = Math.floor((totalSec % 3600) / 60);
         const seconds  = totalSec % 60;
 
-        // Format : "1h 42m" si > 10 min, "8m 30s" si <= 10 min
         const WARNING_THRESHOLD_MIN = 10;
         if (hours === 0 && minutes < WARNING_THRESHOLD_MIN) {
           this.sessionWarning.set(true);
@@ -77,11 +70,10 @@ export class HeaderComponent implements OnDestroy {
         }
       };
 
-      tick(); // affiche immédiatement sans attendre 1 sec
+      tick();
       this.sessionTimer = setInterval(tick, 1000);
 
     } catch {
-      // Token malformé ou non-JWT → on n'affiche rien
       this.sessionCountdown.set('—');
     }
   }
@@ -115,11 +107,11 @@ export class HeaderComponent implements OnDestroy {
 
   constructor() {
     this.initializeTheme();
-    this.startSessionCountdown(); // démarre le compte à rebours au chargement du header
+    this.startSessionCountdown();
   }
 
   ngOnDestroy(): void {
-    this.stopSessionCountdown(); // nettoie le setInterval à la destruction du composant
+    this.stopSessionCountdown();
   }
 
   toggleTheme() {
@@ -152,6 +144,14 @@ export class HeaderComponent implements OnDestroy {
     this.isProfileOpen.update(v => !v);
   }
 
+  openConfigMenu() {
+    this.isConfigMenuOpen.set(true);
+  }
+
+  closeConfigMenu() {
+    this.isConfigMenuOpen.set(false);
+  }
+
   @HostListener('document:click')
   onDocumentClick() {
     this.isProfileOpen.set(false);
@@ -168,11 +168,26 @@ export class HeaderComponent implements OnDestroy {
   }
 
   goToCampaigns() {
+    this.isConfigMenuOpen.set(false);
     this.isProfileOpen.set(false);
     this.router.navigate(['/campaign']);
   }
 
+  goToTicketSearch() {
+    this.isConfigMenuOpen.set(false);
+    this.isProfileOpen.set(false);
+    this.router.navigate(['/ticket-search']);
+  }
+
   isCampaignRoute(): boolean {
     return this.router.url.startsWith('/campaign');
+  }
+
+  isTicketSearchRoute(): boolean {
+    return this.router.url.startsWith('/ticket-search');
+  }
+
+  isConfigRoute(): boolean {
+    return this.isCampaignRoute() || this.isTicketSearchRoute();
   }
 }

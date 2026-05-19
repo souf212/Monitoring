@@ -264,7 +264,7 @@
                     [class.chip--down]="!client.active">
                     {{ client.active ? 'Actif' : 'Inactif' }}
                   </span>
-                  <button class="icon-btn icon-btn--del" title="Retirer"
+                  <button *ngIf="canEditMembership()" class="icon-btn icon-btn--del" title="Retirer"
                     (click)="removeClientFromGroup(client.clientId)">🗑️</button>
                 </div>
               </div>
@@ -274,7 +274,12 @@
             <div class="detail-section">
               <span class="section-label">Ajouter des ATMs</span>
 
-              <div class="search-box add-search">
+              <div *ngIf="!canEditMembership()" class="empty-state empty-state--sm">
+                <p>Ce groupe est calculé automatiquement et ne peut pas être modifié manuellement.</p>
+              </div>
+
+              <ng-container *ngIf="canEditMembership()">
+                <div class="search-box add-search">
                 <span class="search-icon">🔍</span>
                 <input
                   class="search-input search-input--sm"
@@ -324,6 +329,7 @@
                   {{ isAddingBulk() ? '…' : '＋ Ajouter' }}
                 </button>
               </div>
+              </ng-container>
             </div>
 
           </div>

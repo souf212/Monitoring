@@ -13,8 +13,8 @@
       <button class="btn btn-secondary" (click)="goMap()">
         <span class="btn-icon">🗺️</span> Vue carte
       </button>
-      <!-- Bouton Nouvel ATM : visible uniquement pour Support_FullAccess -->
-      <button *appHasRole="['Support_FullAccess']" class="btn btn-primary" (click)="goCreate()">
+      <!-- Bouton Nouvel ATM : visible uniquement pour Support -->
+      <button *appHasRole="['Support']" class="btn btn-primary" (click)="goCreate()">
         <span class="btn-icon">＋</span> Nouvel ATM
       </button>
     </div>
@@ -143,13 +143,13 @@
           </div>
         </div>
 
-        <!-- Actions : boutons écriture masqués pour Admin_ReadOnly -->
+        <!-- Actions : boutons écriture masqués pour Superviseur -->
         <footer class="atm-card__actions">
-          <button *appHasRole="['Support_FullAccess']" class="icon-btn icon-btn--edit" title="Modifier"
+          <button *appHasRole="['Support']" class="icon-btn icon-btn--edit" title="Modifier"
             (click)="goEdit(atm.clientId); $event.stopPropagation()">
             ✏️ Modifier
           </button>
-          <button *appHasRole="['Support_FullAccess']" class="icon-btn icon-btn--del" title="Supprimer"
+          <button *appHasRole="['Support']" class="icon-btn icon-btn--del" title="Supprimer"
             (click)="confirmDelete(atm); $event.stopPropagation()">
             🗑 Supprimer
           </button>

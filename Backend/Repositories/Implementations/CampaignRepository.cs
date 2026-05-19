@@ -102,10 +102,15 @@ namespace KtcWeb.Infrastructure.Repositories
 
         public Task<List<CampaignBusinessDto>> GetCampaignBusinessesAsync(int campaignId) =>
             _context.Database.SqlQueryRaw<CampaignBusinessDto>(@"
-                SELECT cb.campaign_id AS CampaignId, cb.business_id AS BusinessId,
-                       b.businessname AS BusinessName
+                SELECT CAST(cb.campaign_id AS INT) AS CampaignId,
+                       CAST(cb.business_id AS INT) AS BusinessId,
+                       COALESCE(b.businessname, 
+                                CASE WHEN cb.business_id = 0 THEN 'All Businesses'
+                                     WHEN cb.business_id = -1 THEN 'Default business'
+                                     ELSE 'Business #' + CAST(cb.business_id AS VARCHAR(10))
+                                END) AS BusinessName
                 FROM [KALKTCCustomer].[dbo].[CampaignBusinesses] cb
-                LEFT JOIN [KALKTCDB].[dbo].[Businesses] b ON cb.business_id = b.business_id
+                LEFT JOIN [KALKTCDB].[dbo].[Businesses] b ON CAST(cb.business_id AS INT) = CAST(b.business_id AS INT)
                 WHERE cb.campaign_id = {0}", campaignId).ToListAsync();
 
         public Task<List<CampaignGroupDto>> GetCampaignGroupsAsync(int campaignId) =>
@@ -129,5 +134,26 @@ namespace KtcWeb.Infrastructure.Repositories
                 FROM [KALKTCCustomer].[dbo].[CampaignShownCounts] csc
                 LEFT JOIN [KALKTCDB].[dbo].[Businesses] b ON csc.business_id = b.business_id
                 WHERE csc.campaign_id = {0}", campaignId).ToListAsync();
+
+        /// <summary>
+        /// Remplace tous les liens CampaignBusinesses pour une campagne.
+        /// Supprime les anciens puis insère les nouveaux.
+        /// </summary>
+        public async Task SetCampaignBusinessesAsync(int campaignId, List<int> businessIds)
+        {
+            // 1. Supprimer tous les liens existants pour cette campagne
+            await _context.Database.ExecuteSqlRawAsync(
+                "DELETE FROM [KALKTCCustomer].[dbo].[CampaignBusinesses] WHERE campaign_id = {0}",
+                campaignId);
+
+            // 2. Insérer les nouveaux liens
+            foreach (var businessId in businessIds)
+            {
+                await _context.Database.ExecuteSqlRawAsync(
+                    "INSERT INTO [KALKTCCustomer].[dbo].[CampaignBusinesses] (campaign_id, business_id) VALUES ({0}, {1})",
+                    campaignId, businessId);
+            }
+        }
+
     }
 }

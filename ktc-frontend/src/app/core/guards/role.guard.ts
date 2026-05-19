@@ -11,7 +11,7 @@ import { AuthService } from '../services/auth.service';
  *     path: 'atms/create',
  *     component: AtmFormComponent,
  *     canActivate: [authGuard, roleGuard],
- *     data: { roles: ['Support_FullAccess'] }
+ *     data: { roles: ['Support'] }
  *   }
  *
  * Si l'utilisateur est connecté mais sans les droits → /access-denied
@@ -42,3 +42,4 @@ export const roleGuard: CanActivateFn = (route: ActivatedRouteSnapshot) => {
 
   return true;
 };
+

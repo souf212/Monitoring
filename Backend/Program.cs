@@ -1,6 +1,12 @@
 using System.Text.Json;
 using KtcWeb.Hubs;
+using KtcWeb.Application.Interfaces;
+using KtcWeb.Application.Services;
+using KtcWeb.Domain.Interfaces;
+using KtcWeb.Infrastructure.Data;
+using KtcWeb.Infrastructure.Repositories;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.Data.SqlClient;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 
@@ -41,14 +47,28 @@ builder.Services.AddScoped<IAtmApplicationService, AtmApplicationService>();
 builder.Services.AddScoped<ICashCassetteRepository, CashCassetteRepository>();
 builder.Services.AddScoped<ICashCassetteService, CashCassetteService>();
 builder.Services.AddScoped<INocDashboardService, NocDashboardService>();
+builder.Services.AddSingleton<MarketingStateService>();  // État marketing en mémoire
 builder.Services.AddScoped<ICampaignRepository, CampaignRepository>();
 builder.Services.AddScoped<ICampaignService, CampaignService>();
+builder.Services.AddScoped<ITicketSearchRepository, TicketSearchRepository>();
+builder.Services.AddScoped<ITicketSearchService, TicketSearchService>();
 builder.Services.AddScoped<IGroupRepository, GroupRepository>();
 builder.Services.AddScoped<IGroupService, GroupService>();
 // === AJOUT POUR LA BASE KTC ===
 // === CONNEXION BASE DE DONNÉES KTC ===
+var ktcConnectionString = builder.Configuration.GetConnectionString("KtcDb");
+if (string.IsNullOrWhiteSpace(ktcConnectionString))
+{
+    throw new InvalidOperationException("KtcDb connection string is not configured.");
+}
+
+var sqlConnectionBuilder = new SqlConnectionStringBuilder(ktcConnectionString)
+{
+    ConnectTimeout = Math.Max(60, new SqlConnectionStringBuilder(ktcConnectionString).ConnectTimeout)
+};
+
 builder.Services.AddDbContext<KtcDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("KtcDb")));
+    options.UseSqlServer(sqlConnectionBuilder.ConnectionString));
 
 
 // Configuration JWT Authentication
@@ -91,17 +111,17 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 
 // ─── RBAC Policies ─────────────────────────────────────────────────────────
-// RequireReadOnly : lecture seule — Admin_ReadOnly OU Support_FullAccess
-// RequireWrite    : écriture — Support_FullAccess uniquement
+// RequireReadOnly : lecture seule — Superviseur OU Support
+// RequireWrite    : écriture — Support uniquement
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("RequireReadOnly", policy =>
         policy.RequireAssertion(ctx =>
-            ctx.User.IsInRole("Admin_ReadOnly") ||
-            ctx.User.IsInRole("Support_FullAccess")));
+            ctx.User.IsInRole("Superviseur") ||
+            ctx.User.IsInRole("Support")));
 
     options.AddPolicy("RequireWrite", policy =>
-        policy.RequireRole("Support_FullAccess"));
+        policy.RequireRole("Support"));
 });
 
 var app = builder.Build();
@@ -130,3 +150,4 @@ app.MapGet("/", () => Results.Redirect("/swagger"));
 app.Run();
 
 public partial class Program { }
+

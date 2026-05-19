@@ -8,6 +8,7 @@ namespace KtcWeb.Domain.Interfaces
         Task<GroupDto?> GetGroupByIdAsync(int groupId);
         Task<List<ClientSimpleDto>> GetAllClientsAsync();
         Task<List<ClientSimpleDto>> GetClientsByGroupAsync(int groupId);
+        Task<List<ClientSimpleDto>> GetClientsByQueryAsync(string groupQuery);
         Task CreateGroupAsync(CreateGroupRequest request);
         Task UpdateGroupAsync(UpdateGroupRequest request);
         Task AddClientToGroupAsync(int groupId, int clientId);

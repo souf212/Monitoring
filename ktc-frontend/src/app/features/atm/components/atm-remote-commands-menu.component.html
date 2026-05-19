@@ -1,14 +1,14 @@
-<!-- Le bouton "Actions distantes" est réservé au rôle Support_FullAccess -->
+<!-- Le bouton "Actions distantes" est réservé au rôle Support -->
 <div class="remote-menu" (click)="$event.stopPropagation()">
 
-  <!-- *appHasRole masque structurellement le bouton pour Admin_ReadOnly -->
+  <!-- *appHasRole masque structurellement le bouton pour Superviseur -->
   <button
-    *appHasRole="['Support_FullAccess']"
+    *appHasRole="['Support']"
     type="button"
     class="remote-menu__trigger"
     [class.remote-menu__trigger--open]="menuOpen()"
     (click)="toggleMenu($event)"
-    title="Commandes distantes : Refresh, Reboot, Supervisor, Upload… (Support_FullAccess uniquement)"
+    title="Commandes distantes : Refresh, Reboot, Supervisor, Upload… (Support uniquement)"
   >
     Actions distantes
     <span class="remote-menu__chev">▾</span>

@@ -13,5 +13,10 @@ namespace KtcWeb.Application.Interfaces
         Task<List<CampaignGroupDto>> GetCampaignGroupsAsync(int campaignId);
         Task<List<CampaignBINRangeDto>> GetCampaignBINRangesAsync(int campaignId);
         Task<List<CampaignShownCountDto>> GetCampaignShownCountsAsync(int campaignId);
+
+        Task<bool> GetGlobalMarketingEnabledAsync();
+        Task<bool> SetGlobalMarketingEnabledAsync(bool enabled);
+        Task<bool> GetBusinessMarketingEnabledAsync(int businessId);
+        Task<bool> SetBusinessMarketingEnabledAsync(int businessId, bool enabled);
     }
 }

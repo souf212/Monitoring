@@ -10,8 +10,8 @@ export interface LoginResponse {
 
 /** Groupes AD utilisés pour le RBAC */
 export const AD_ROLES = {
-  READ_ONLY:    'Admin_ReadOnly',
-  FULL_ACCESS:  'Support_FullAccess'
+  READ_ONLY:    'Superviseur',
+  FULL_ACCESS:  'Support'
 } as const;
 
 @Injectable({ providedIn: 'root' })
@@ -45,6 +45,27 @@ export class AuthService {
     return { username, email, displayName };
   });
 
+  private normalizeRole(role: string): string {
+    return role?.trim().toLowerCase();
+  }
+
+  private parseRolesClaim(claim: unknown): string[] {
+    if (!claim) return [];
+    if (typeof claim === 'string') {
+      return claim
+        .split(',')
+        .map(role => role.trim())
+        .filter(Boolean);
+    }
+    if (Array.isArray(claim)) {
+      return claim.flatMap(value => this.parseRolesClaim(value));
+    }
+    if (typeof claim === 'object') {
+      return Object.values(claim).flatMap(value => this.parseRolesClaim(value));
+    }
+    return [];
+  }
+
   /** Tous les rôles de l'utilisateur (groupes AD injectés dans le JWT) */
   public currentUserRoles = computed((): string[] => {
     const payload = this.jwtPayload();
@@ -54,32 +75,31 @@ export class AuthService {
       payload['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'] ??
       payload.role ??
       payload.roles;
-    if (Array.isArray(roleClaim)) return roleClaim;
-    if (typeof roleClaim === 'string') return [roleClaim];
-    return [];
+    return this.parseRolesClaim(roleClaim);
   });
 
   // ── Signals RBAC ──────────────────────────────────────────────────────────
 
-  /** True si l'utilisateur appartient au groupe AD "Support_FullAccess" */
+  /** True si l'utilisateur appartient au groupe AD "Support" */
   public isSupport = computed(() =>
-    this.currentUserRoles().includes(AD_ROLES.FULL_ACCESS)
+    this.hasRole([AD_ROLES.FULL_ACCESS])
   );
 
-  /** True si l'utilisateur appartient à "Admin_ReadOnly" (sans FullAccess) */
+  /** True si l'utilisateur appartient à "Superviseur" (sans FullAccess) */
   public isReadOnly = computed(() =>
-    this.currentUserRoles().includes(AD_ROLES.READ_ONLY) &&
-    !this.currentUserRoles().includes(AD_ROLES.FULL_ACCESS)
+    this.hasRole([AD_ROLES.READ_ONLY]) &&
+    !this.hasRole([AD_ROLES.FULL_ACCESS])
   );
 
   /** True si l'utilisateur peut lire (appartient à au moins un des deux groupes) */
   public canRead = computed(() =>
-    this.isSupport() || this.currentUserRoles().includes(AD_ROLES.READ_ONLY)
+    this.isSupport() || this.hasRole([AD_ROLES.READ_ONLY])
   );
 
   /** Vérifie dynamiquement la présence d'un ou plusieurs rôles */
   public hasRole(roles: string[]): boolean {
-    return roles.some(r => this.currentUserRoles().includes(r));
+    const normalizedRoles = this.currentUserRoles().map(this.normalizeRole);
+    return roles.some(r => normalizedRoles.includes(this.normalizeRole(r)));
   }
 
   constructor(private http: HttpClient, private router: Router) {}

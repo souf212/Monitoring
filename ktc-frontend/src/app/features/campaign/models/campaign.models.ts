@@ -39,6 +39,7 @@ export interface CreateCampaignRequest {
   interactive?: boolean;
   maxShowMeLaterShows?: number;
   showMeLaterRestHours?: number;
+  businessIds?: number[];        // ← NOUVEAU
 }
 
 export interface CampaignBusiness {

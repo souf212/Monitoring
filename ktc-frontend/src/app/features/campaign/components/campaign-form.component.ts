@@ -2,8 +2,10 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router, ActivatedRoute, RouterModule } from '@angular/router';
-import { CampaignService } from '../services/campaign.service';
+import { CampaignService, BusinessDto } from '../services/campaign.service';
 import { Campaign, CreateCampaignRequest } from '../models/campaign.models';
+import { forkJoin, of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 
 @Component({
   selector: 'app-campaign-form',
@@ -20,12 +22,16 @@ export class CampaignFormComponent implements OnInit {
 
   // ── State ─────────────────────────────────────────────────────────────────
   form!: FormGroup;
-  isLoading    = signal(false);
-  isSubmitting = signal(false);
-  error        = signal<string | null>(null);
-  isEditing    = signal(false);
-  activeTab    = signal<'general' | 'display' | 'data'>('general');
+  isLoading          = signal(false);
+  isSubmitting       = signal(false);
+  error              = signal<string | null>(null);
+  isEditing          = signal(false);
+  activeTab          = signal<'general' | 'display' | 'data'>('general');
   campaignId: number | null = null;
+
+  // ── Businesses ────────────────────────────────────────────────────────────
+  availableBusinesses = signal<BusinessDto[]>([]);
+  selectedBusinessIds = signal<number[]>([]);
 
   // ── Options ───────────────────────────────────────────────────────────────
   campaignTypes = [
@@ -45,6 +51,7 @@ export class CampaignFormComponent implements OnInit {
   // ── Lifecycle ──────────────────────────────────────────────────────────────
   ngOnInit(): void {
     this.initForm();
+    this.loadBusinesses();
 
     this.route.params.subscribe(params => {
       if (params['id']) {
@@ -79,13 +86,72 @@ export class CampaignFormComponent implements OnInit {
     });
   }
 
+  // ── Load businesses (pour la création) ────────────────────────────────────
+  private loadBusinesses(): void {
+    this.campaignService.getAllBusinesses().subscribe({
+      next: (b) => {
+        const businesses = b.map(x => ({
+          ...x,
+          businessId: Number(x.businessId)
+        }));
+        this.availableBusinesses.set(this.addSpecialBusinessOptions(businesses));
+      },
+      error: () => {} // non bloquant
+    });
+  }
+
+  private addSpecialBusinessOptions(businesses: BusinessDto[]): BusinessDto[] {
+    const items = [...businesses];
+
+    if (!items.some(x => x.businessId === 0)) {
+      items.unshift({
+        businessId: 0,
+        businessName: 'All Businesses',
+        displayId: '0'
+      });
+    }
+
+    if (!items.some(x => x.businessId === -1)) {
+      items.unshift({
+        businessId: -1,
+        businessName: 'Default business',
+        displayId: '-1'
+      });
+    }
+
+    return items;
+  }
+
+  // ── Toggle business selection ───────────────────────────────────────────────
+  toggleBusiness(id: number | string): void {
+    const businessId = Number(id);
+    this.selectedBusinessIds.update(ids =>
+      ids.includes(businessId) ? ids.filter(x => x !== businessId) : [...ids, businessId]
+    );
+  }
+
+  isBusinessSelected(id: number | string): boolean {
+    return this.selectedBusinessIds().includes(Number(id));
+  }
+
   // ── Load (edit mode) ───────────────────────────────────────────────────────
   private loadCampaign(): void {
     if (!this.campaignId) return;
     this.isLoading.set(true);
-    this.campaignService.getCampaignById(this.campaignId).subscribe({
-      next: (campaign) => {
+
+    forkJoin({
+      campaign: this.campaignService.getCampaignById(this.campaignId),
+      campaignBusinesses: this.campaignService.getCampaignBusinesses(this.campaignId).pipe(
+        catchError((err) => {
+          console.warn('Unable to load campaign businesses:', err);
+          return of([]);
+        })
+      )
+    }).subscribe({
+      next: ({ campaign, campaignBusinesses }) => {
         this.populateForm(campaign);
+        const businessIds = campaignBusinesses.map(cb => Number(cb.businessId)).filter(id => !Number.isNaN(id));
+        this.selectedBusinessIds.set(businessIds);
         this.isLoading.set(false);
       },
       error: (err) => {
@@ -125,12 +191,18 @@ export class CampaignFormComponent implements OnInit {
     if (this.form.invalid) {
       this.form.markAllAsTouched();
       this.error.set('Please fill in all required fields correctly');
-      // Auto-switch to the tab that has errors
       if (this.form.get('name')?.invalid || this.form.get('startDate')?.invalid ||
           this.form.get('endDate')?.invalid || this.form.get('purgeDate')?.invalid ||
           this.form.get('priority')?.invalid) {
         this.activeTab.set('general');
       }
+      return;
+    }
+
+    // Validation : au moins un business requis en mode création
+    if (!this.isEditing() && this.selectedBusinessIds().length === 0) {
+      this.error.set('Veuillez sélectionner au moins un business pour cette campagne');
+      this.activeTab.set('general');
       return;
     }
 
@@ -151,6 +223,7 @@ export class CampaignFormComponent implements OnInit {
       startDate: raw.startDate ? new Date(raw.startDate) : undefined,
       endDate:   raw.endDate   ? new Date(raw.endDate)   : undefined,
       purgeDate: raw.purgeDate ? new Date(raw.purgeDate) : undefined,
+      businessIds: this.selectedBusinessIds(),
     };
 
     const operation = this.isEditing() && this.campaignId

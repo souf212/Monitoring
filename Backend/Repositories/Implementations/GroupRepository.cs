@@ -1,6 +1,7 @@
 using KtcWeb.Application.DTOs;
 using KtcWeb.Domain.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using System.Text.RegularExpressions;
 
 namespace KtcWeb.Infrastructure.Repositories
 {
@@ -49,6 +50,49 @@ namespace KtcWeb.Infrastructure.Repositories
                 INNER JOIN [KALKTCDB].[dbo].[ClientGroups] cg ON c.client_id = cg.client_id
                 WHERE cg.group_id = {0}
                 ORDER BY c.clientname", groupId).ToListAsync();
+
+        public async Task<List<ClientSimpleDto>> GetClientsByQueryAsync(string groupQuery)
+        {
+            if (string.IsNullOrWhiteSpace(groupQuery))
+                return new List<ClientSimpleDto>();
+
+            List<int> clientIds;
+            try
+            {
+                clientIds = await ExecuteGroupQueryAsync(groupQuery);
+            }
+            catch
+            {
+                return new List<ClientSimpleDto>();
+            }
+
+            var distinctIds = clientIds.Distinct().ToList();
+            if (distinctIds.Count == 0)
+                return new List<ClientSimpleDto>();
+
+            return await _context.Clients
+                .AsNoTracking()
+                .Where(c => distinctIds.Contains(c.ClientId))
+                .Select(c => new ClientSimpleDto
+                {
+                    ClientId = c.ClientId,
+                    ClientName = c.ClientName,
+                    NetworkAddress = c.NetworkAddress,
+                    Active = c.Active
+                })
+                .OrderBy(c => c.ClientName)
+                .ToListAsync();
+        }
+
+        private Task<List<int>> ExecuteGroupQueryAsync(string groupQuery)
+        {
+            if (!Regex.IsMatch(groupQuery, @"^([A-Za-z0-9_]+\.)*[A-Za-z0-9_]+$"))
+                throw new InvalidOperationException("GroupQuery contient des caractères invalides.");
+
+            var escaped = string.Join('.', groupQuery.Split('.').Select(part => $"[{part}]"));
+            var sql = $"EXEC {escaped}";
+            return _context.Database.SqlQueryRaw<int>(sql).ToListAsync();
+        }
 
         public Task CreateGroupAsync(CreateGroupRequest r) =>
             _context.Database.ExecuteSqlInterpolatedAsync($@"

@@ -16,6 +16,10 @@ export interface BusinessDto {
   displayId: string;
 }
 
+export interface MarketingStateDto {
+  enabled: boolean;
+}
+
 @Injectable({ providedIn: 'root' })
 export class CampaignService {
   private readonly http      = inject(HttpClient);
@@ -50,6 +54,22 @@ export class CampaignService {
 
   getCampaignShownCounts(campaignId: number): Observable<CampaignShownCount[]> {
     return this.http.get<CampaignShownCount[]>(`${this.apiUrl}/${campaignId}/shown-counts`);
+  }
+
+  getGlobalMarketingState(): Observable<MarketingStateDto> {
+    return this.http.get<MarketingStateDto>(`${this.apiUrl}/marketing/global`);
+  }
+
+  setGlobalMarketingState(enabled: boolean): Observable<MarketingStateDto> {
+    return this.http.post<MarketingStateDto>(`${this.apiUrl}/marketing/global`, { enabled });
+  }
+
+  getBusinessMarketingState(businessId: number): Observable<MarketingStateDto> {
+    return this.http.get<MarketingStateDto>(`${this.apiUrl}/marketing/business/${businessId}`);
+  }
+
+  setBusinessMarketingState(businessId: number, enabled: boolean): Observable<MarketingStateDto> {
+    return this.http.post<MarketingStateDto>(`${this.apiUrl}/marketing/business/${businessId}`, { enabled });
   }
 
   // ── CREATE / UPDATE / DELETE ───────────────────────────────────────────────

@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { CampaignService, BusinessDto } from '../services/campaign.service';
+import { AuthService } from '../../../core/services/auth.service';
 import { Campaign } from '../models/campaign.models';
 import { forkJoin } from 'rxjs';
 
@@ -15,14 +16,17 @@ import { forkJoin } from 'rxjs';
 })
 export class CampaignListComponent implements OnInit {
   private readonly campaignService = inject(CampaignService);
-  private readonly router = inject(Router);
+  private readonly authService = inject(AuthService);
+  private readonly router          = inject(Router);
 
-  // ── State ─────────────────────────────────────────────────────────────────
-  campaigns          = signal<Campaign[]>([]);
-  businesses         = signal<BusinessDto[]>([]);
-  selectedCampaignId = signal<number | null>(null);
-  isLoading          = signal(false);
-  error              = signal<string | null>(null);
+  // ── State ──────────────────────────────────────────────────────────────────
+  campaigns             = signal<Campaign[]>([]);
+  businesses            = signal<BusinessDto[]>([]);
+  selectedCampaignId    = signal<number | null>(null);
+  isLoading             = signal(false);
+  error                 = signal<string | null>(null);
+  campaignBusinessesMap = signal<Map<number, string>>(new Map());
+  campaignBusinessIdsMap= signal<Map<number, number[]>>(new Map());
 
   // Filters
   searchQuery    = signal('');
@@ -33,6 +37,10 @@ export class CampaignListComponent implements OnInit {
   // Sort
   sortField = signal<keyof Campaign>('name');
   sortAsc   = signal(true);
+
+  // RBAC: Vérifier si Support (peut éditer marketing et campagnes)
+  canEditMarketing = computed(() => this.authService.isSupport());
+  canEditCampaign = computed(() => this.canEditMarketing());
 
   // ── Computed ───────────────────────────────────────────────────────────────
   filtered = computed(() => {
@@ -52,6 +60,12 @@ export class CampaignListComponent implements OnInit {
         )) return false;
         if (statusF !== null && Number(c.campaignStatus) !== statusF) return false;
         if (typeF   !== null && Number(c.campaignType)   !== typeF)   return false;
+
+        if (this.businessFilter()) {
+          const ids = this.campaignBusinessIdsMap().get(c.campaignId) ?? [];
+          if (!ids.some(id => String(id) === String(this.businessFilter()))) return false;
+        }
+
         return true;
       })
       .sort((a, b) => {
@@ -65,6 +79,11 @@ export class CampaignListComponent implements OnInit {
         return asc ? cmp : -cmp;
       });
   });
+
+  // KPI counts (on filtered list)
+  enabledCount  = computed(() => this.filtered().filter(c => Number(c.campaignStatus) === 0).length);
+  disabledCount = computed(() => this.filtered().filter(c => Number(c.campaignStatus) === 1).length);
+  expiredCount  = computed(() => this.filtered().filter(c => Number(c.campaignStatus) === 2).length);
 
   currentBusiness = computed(() => {
     const id = this.businessFilter();
@@ -84,7 +103,7 @@ export class CampaignListComponent implements OnInit {
     this.loadAll();
   }
 
-  // ── Load campaigns + businesses in parallel ────────────────────────────────
+  // ── Load ───────────────────────────────────────────────────────────────────
   loadAll(): void {
     this.isLoading.set(true);
     this.error.set(null);
@@ -96,6 +115,7 @@ export class CampaignListComponent implements OnInit {
       next: ({ campaigns, businesses }) => {
         this.campaigns.set(campaigns);
         this.businesses.set(businesses);
+        this.loadCampaignBusinesses(campaigns);
         this.isLoading.set(false);
       },
       error: (err) => {
@@ -106,42 +126,52 @@ export class CampaignListComponent implements OnInit {
     });
   }
 
-  // Reload only campaigns (bouton Update / Apply / OK)
   load(): void {
     this.isLoading.set(true);
     this.error.set(null);
     this.campaignService.getAllCampaigns().subscribe({
       next: (campaigns) => {
         this.campaigns.set(campaigns);
+        this.loadCampaignBusinesses(campaigns);
         this.isLoading.set(false);
       },
       error: (err) => {
-        console.error('Load error:', err);
         this.error.set('Impossible de charger les campagnes.');
         this.isLoading.set(false);
       }
     });
   }
 
-  // ── Selection ──────────────────────────────────────────────────────────────
-  selectCampaign(campaignId: number): void {
-    this.selectedCampaignId.set(
-      this.selectedCampaignId() === campaignId ? null : campaignId
-    );
+  private loadCampaignBusinesses(campaigns: Campaign[]): void {
+    if (!campaigns.length) return;
+    campaigns.forEach(campaign => {
+      this.campaignService.getCampaignBusinesses(campaign.campaignId).subscribe({
+        next: (businesses) => {
+          const ids   = businesses.map(b => Number((b as any).businessId ?? 0)).filter(id => !Number.isNaN(id));
+          const names = businesses.map(b => b.businessName ?? String((b as any).businessId ?? '')).filter(Boolean).join(', ');
+          this.campaignBusinessIdsMap.update(m => { const n = new Map(m); n.set(campaign.campaignId, ids); return n; });
+          this.campaignBusinessesMap.update(m => { const n = new Map(m); n.set(campaign.campaignId, names || '—'); return n; });
+        },
+        error: () => {
+          this.campaignBusinessesMap.update(m => { const n = new Map(m); n.set(campaign.campaignId, '—'); return n; });
+        }
+      });
+    });
   }
 
-  isSelected(campaignId: number): boolean {
-    return this.selectedCampaignId() === campaignId;
+  // ── Selection ──────────────────────────────────────────────────────────────
+  selectCampaign(id: number): void {
+    this.selectedCampaignId.set(this.selectedCampaignId() === id ? null : id);
+  }
+
+  isSelected(id: number): boolean {
+    return this.selectedCampaignId() === id;
   }
 
   // ── Sort ───────────────────────────────────────────────────────────────────
   sort(field: keyof Campaign): void {
-    if (this.sortField() === field) {
-      this.sortAsc.update(v => !v);
-    } else {
-      this.sortField.set(field);
-      this.sortAsc.set(true);
-    }
+    if (this.sortField() === field) { this.sortAsc.update(v => !v); }
+    else { this.sortField.set(field); this.sortAsc.set(true); }
   }
 
   sortIcon(field: keyof Campaign): string {
@@ -150,49 +180,49 @@ export class CampaignListComponent implements OnInit {
   }
 
   // ── Navigation ─────────────────────────────────────────────────────────────
-  goCreate(): void {
-    this.router.navigate(['/campaign/create']);
-  }
-
-  goEdit(campaignId: number): void {
-    this.router.navigate(['/campaign', campaignId, 'edit']);
-  }
-
-  goDetails(campaignId: number): void {
-    this.router.navigate(['/campaign', campaignId]);
-  }
-
+  goCreate():             void { if (!this.canEditCampaign()) return; this.router.navigate(['/campaign/create']); }
+  goEdit(id: number):     void { this.router.navigate(['/campaign', id, 'edit']); }
+  goDetails(id: number):  void { this.router.navigate(['/campaign', id]); }
   openMarketingControl(): void {
-    const id = this.selectedCampaignId();
-    if (id) this.router.navigate(['/campaign', id, 'marketing']);
-  }
-
-  // ── Delete ─────────────────────────────────────────────────────────────────
-  deleteCampaign(campaignId: number, event: Event): void {
-    event.stopPropagation();
-    if (!confirm('Êtes-vous sûr de vouloir supprimer cette campagne ?')) return;
-
-    this.campaignService.deleteCampaign(campaignId).subscribe({
-      next: () => {
-        this.campaigns.update(items => items.filter(c => c.campaignId !== campaignId));
-        if (this.selectedCampaignId() === campaignId) this.selectedCampaignId.set(null);
-      },
-      error: () => alert('Erreur lors de la suppression de la campagne')
+    const businessId = this.businessFilter();
+    this.router.navigate([{ outlets: { modal: ['marketing'] } }], {
+      queryParams: { businessId: businessId || undefined }
     });
   }
 
-  // ── Label helpers ──────────────────────────────────────────────────────────
-  getStatusLabel(status: number): string {
-    const labels: Record<number, string> = {
-      0: 'Enabled', 1: 'Disabled', 2: 'Expired', 3: 'Purged', 4: 'Cancelled'
-    };
-    return labels[status] ?? 'Unknown';
+  // ── Delete ─────────────────────────────────────────────────────────────────
+  deleteCampaign(id: number, event: Event): void {
+    event.stopPropagation();
+    if (!confirm('Êtes-vous sûr de vouloir supprimer cette campagne ?')) return;
+    this.campaignService.deleteCampaign(id).subscribe({
+      next: () => {
+        this.campaigns.update(list => list.filter(c => c.campaignId !== id));
+        if (this.selectedCampaignId() === id) this.selectedCampaignId.set(null);
+      },
+      error: () => alert('Erreur lors de la suppression')
+    });
   }
 
-  getTypeLabel(type: number): string {
-    const labels: Record<number, string> = {
-      0: 'General', 1: 'Targeted', 2: 'External'
-    };
-    return labels[type] ?? 'Unknown';
+  // ── Label & badge helpers ──────────────────────────────────────────────────
+  getStatusLabel(s: number): string {
+    return ['Activée', 'Désactivée', 'Expirée', 'Purgée', 'Annulée'][s] ?? 'Inconnu';
+  }
+
+  getTypeLabel(t: number): string {
+    return ['Générale', 'Ciblée', 'Externe'][t] ?? 'Inconnu';
+  }
+
+  statusBadgeClass(s: number): string {
+    const map: Record<number, string> = { 0: 'badge badge--enabled', 1: 'badge badge--disabled', 2: 'badge badge--expired', 3: 'badge badge--purged', 4: 'badge badge--cancelled' };
+    return map[s] ?? 'badge';
+  }
+
+  typeBadgeClass(t: number): string {
+    const map: Record<number, string> = { 0: 'badge badge--general', 1: 'badge badge--targeted', 2: 'badge badge--external' };
+    return map[t] ?? 'badge';
+  }
+
+  getCampaignBusinessNames(id: number): string {
+    return this.campaignBusinessesMap().get(id) ?? '—';
   }
 }

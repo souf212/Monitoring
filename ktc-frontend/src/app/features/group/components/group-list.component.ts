@@ -75,7 +75,17 @@ export class GroupListComponent implements OnInit {
   totalCount = computed(() => this.groups().length);
 
   // ── Lifecycle ──────────────────────────────────────────────────────────────
-  ngOnInit(): void { this.load(); }
+  ngOnInit(): void {
+    this.load();
+    this.groupService.groupModified$.subscribe(groupId => {
+      if (this.selectedGroupId() === groupId) {
+        this.groupService.getGroupDetails(groupId).subscribe({
+          next: data => this.selectedGroupDtl.set(data),
+          error: err => console.error('Erreur recharge groupes:', err)
+        });
+      }
+    });
+  }
 
   // ── Load ───────────────────────────────────────────────────────────────────
   load(): void {
@@ -153,7 +163,7 @@ export class GroupListComponent implements OnInit {
   // ── Ajouter plusieurs ATMs ─────────────────────────────────────────────────
   addSelectedClients(): void {
     const ids = Array.from(this.selectedClientIds());
-    if (ids.length === 0 || !this.selectedGroupId()) return;
+    if (ids.length === 0 || !this.selectedGroupId() || !this.canEditMembership()) return;
 
     this.isAddingBulk.set(true);
     let completed = 0;
@@ -188,7 +198,7 @@ export class GroupListComponent implements OnInit {
   // ── Retirer un ATM ────────────────────────────────────────────────────────
   removeClientFromGroup(clientId: number): void {
     if (!confirm('Retirer cet ATM du groupe ?')) return;
-    if (!this.selectedGroupId()) return;
+    if (!this.selectedGroupId() || !this.canEditMembership()) return;
 
     this.groupService.removeClientFromGroup(this.selectedGroupId()!, clientId).subscribe({
       next: () => {
@@ -199,6 +209,11 @@ export class GroupListComponent implements OnInit {
       },
       error: err => alert(err?.error?.message ?? 'Erreur lors du retrait')
     });
+  }
+
+  canEditMembership(): boolean {
+    const typeId = this.selectedGroupDtl()?.groupTypeId;
+    return typeId !== 1 && typeId !== 4;
   }
 
   // ── Navigation ─────────────────────────────────────────────────────────────

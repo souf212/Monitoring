@@ -449,7 +449,104 @@
   opacity: 0.75;
 }
 
+/* ===== CONFIGURATION DROPDOWN ===== */
+.config-menu-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.nav-btn__chevron {
+  font-size: 10px;
+  margin-left: 4px;
+  opacity: 0.5;
+  display: inline;
+  transition: transform 200ms ease;
+  line-height: 1;
+}
+
+.config-menu-wrapper:hover .nav-btn__chevron {
+  transform: rotate(180deg);
+  opacity: 0.8;
+}
+
+.config-dropdown {
+  position: absolute;
+  top: calc(100% + 1px);
+  left: 0;
+  min-width: 210px;
+  background: var(--surface, #FFFFFF);
+  border: 1px solid #E4E2DC;
+  border-radius: 4px;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.04), 0 12px 32px rgba(0,0,0,0.08);
+  overflow: hidden;
+  animation: dropIn 150ms cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 50;
+  padding: 4px 0;
+}
+
+.config-dropdown-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 11.5px;
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-family: 'DM Sans', inherit;
+  color: var(--text-secondary, #6B6860);
+  transition: background 120ms ease, color 120ms ease;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.config-dropdown-item:hover {
+  background: #EEF2F7;
+  color: #1A3A5C;
+}
+
+.config-dropdown-item.active {
+  color: #1A3A5C;
+  font-weight: 500;
+  background: #EEF2F7;
+}
+
+.config-dropdown-icon {
+  font-size: 13px;
+  opacity: 0.7;
+  flex-shrink: 0;
+}
+
 /* ===== DARK THEME ===== */
+:host-context(.theme-dark) .config-dropdown,
+:host-context(body.theme-dark) .config-dropdown {
+  background: #1a1a18;
+  border-color: rgba(255,255,255,0.10);
+  box-shadow: 0 16px 40px rgba(0,0,0,0.35), 0 2px 8px rgba(0,0,0,0.20);
+}
+
+:host-context(.theme-dark) .config-dropdown-item,
+:host-context(body.theme-dark) .config-dropdown-item {
+  color: rgba(255,255,255,0.5);
+}
+
+:host-context(.theme-dark) .config-dropdown-item:hover,
+:host-context(body.theme-dark) .config-dropdown-item:hover {
+  background: rgba(255,255,255,0.06);
+  color: #F0ECE4;
+}
+
+:host-context(.theme-dark) .config-dropdown-item.active,
+:host-context(body.theme-dark) .config-dropdown-item.active {
+  color: #7BAED4;
+  background: rgba(45,90,142,0.15);
+}
+
 :host-context(.theme-dark) .app-topbar,
 :host-context(body.theme-dark) .app-topbar {
   background: #0D2236;

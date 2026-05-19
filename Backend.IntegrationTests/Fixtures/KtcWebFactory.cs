@@ -14,7 +14,7 @@ namespace Backend.IntegrationTests.Fixtures;
 
 /// <summary>
 /// Démarre le vrai backend ASP.NET Core en mémoire.
-/// - Authentification remplacée par un handler de test (Support_FullAccess).
+/// - Authentification remplacée par un handler de test (Support).
 /// - IHostedService supprimés (pas de SqlTableDependency en test).
 /// - Connection string héritée de appsettings.Development.json (base réelle, lecture seule).
 /// </summary>
@@ -29,7 +29,7 @@ public class KtcWebFactory : WebApplicationFactory<Program>
             // Supprimer les hosted services (SqlTableDependency) — inutiles et bruyants en test
             services.RemoveAll<IHostedService>();
 
-            // Remplacer l'auth JWT par un handler qui accepte tout avec Support_FullAccess
+            // Remplacer l'auth JWT par un handler qui accepte tout avec Support
             services.AddAuthentication("Test")
                 .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>("Test", _ => { });
         });
@@ -38,7 +38,7 @@ public class KtcWebFactory : WebApplicationFactory<Program>
 
 /// <summary>
 /// Handler d'authentification de test : authentifie automatiquement chaque requête
-/// avec le rôle Support_FullAccess (accès complet lecture + écriture).
+/// avec le rôle Support (accès complet lecture + écriture).
 /// </summary>
 public class TestAuthHandler : AuthenticationHandler<AuthenticationSchemeOptions>
 {
@@ -53,8 +53,8 @@ public class TestAuthHandler : AuthenticationHandler<AuthenticationSchemeOptions
         var claims = new[]
         {
             new Claim(ClaimTypes.Name, "test-user"),
-            new Claim(ClaimTypes.Role, "Support_FullAccess"),
-            new Claim(ClaimTypes.Role, "Admin_ReadOnly"),
+            new Claim(ClaimTypes.Role, "Support"),
+            new Claim(ClaimTypes.Role, "Superviseur"),
         };
 
         var identity  = new ClaimsIdentity(claims, "Test");
@@ -64,3 +64,4 @@ public class TestAuthHandler : AuthenticationHandler<AuthenticationSchemeOptions
         return Task.FromResult(AuthenticateResult.Success(ticket));
     }
 }
+

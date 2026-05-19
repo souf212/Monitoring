@@ -14,5 +14,11 @@ namespace KtcWeb.Domain.Interfaces
         Task<List<CampaignGroupDto>> GetCampaignGroupsAsync(int campaignId);
         Task<List<CampaignBINRangeDto>> GetCampaignBINRangesAsync(int campaignId);
         Task<List<CampaignShownCountDto>> GetCampaignShownCountsAsync(int campaignId);
+
+        /// <summary>
+        /// Remplace tous les liens CampaignBusinesses pour une campagne donnée.
+        /// Supprime les anciens et insère les nouveaux businessIds.
+        /// </summary>
+        Task SetCampaignBusinessesAsync(int campaignId, List<int> businessIds);
     }
 }

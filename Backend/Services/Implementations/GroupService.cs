@@ -21,9 +21,18 @@ namespace KtcWeb.Application.Services
             var group = await _repo.GetGroupByIdAsync(groupId)
                 ?? throw new KeyNotFoundException($"Groupe {groupId} non trouvé");
 
-            return group.GroupTypeId == 1
-                ? await _repo.GetAllClientsAsync()
-                : await _repo.GetClientsByGroupAsync(groupId);
+            try
+            {
+                return group.GroupTypeId == 1
+                    ? await _repo.GetAllClientsAsync()
+                    : group.GroupTypeId == 4
+                        ? await _repo.GetClientsByQueryAsync(group.GroupQuery ?? string.Empty)
+                        : await _repo.GetClientsByGroupAsync(groupId);
+            }
+            catch
+            {
+                return new List<ClientSimpleDto>();
+            }
         }
 
         public async Task<GroupDetailsDto?> GetGroupDetailsAsync(int groupId)
@@ -32,9 +41,19 @@ namespace KtcWeb.Application.Services
             if (group == null)
                 return null;
 
-            var clients = group.GroupTypeId == 1
-                ? await _repo.GetAllClientsAsync()
-                : await _repo.GetClientsByGroupAsync(groupId);
+            List<ClientSimpleDto> clients;
+            try
+            {
+                clients = group.GroupTypeId == 1
+                    ? await _repo.GetAllClientsAsync()
+                    : group.GroupTypeId == 4
+                        ? await _repo.GetClientsByQueryAsync(group.GroupQuery ?? string.Empty)
+                        : await _repo.GetClientsByGroupAsync(groupId);
+            }
+            catch
+            {
+                clients = new List<ClientSimpleDto>();
+            }
 
             return new GroupDetailsDto
             {
@@ -66,11 +85,27 @@ namespace KtcWeb.Application.Services
             return _repo.UpdateGroupAsync(request);
         }
 
-        public Task AddClientToGroupAsync(int groupId, int clientId) =>
-            _repo.AddClientToGroupAsync(groupId, clientId);
+        public async Task AddClientToGroupAsync(int groupId, int clientId)
+        {
+            var group = await _repo.GetGroupByIdAsync(groupId)
+                ?? throw new KeyNotFoundException($"Groupe {groupId} non trouvé");
 
-        public Task RemoveClientFromGroupAsync(int groupId, int clientId) =>
-            _repo.RemoveClientFromGroupAsync(groupId, clientId);
+            if (group.GroupTypeId == 1 || group.GroupTypeId == 4)
+                throw new InvalidOperationException("Impossible d'ajouter un ATM manuellement à un groupe dynamique.");
+
+            await _repo.AddClientToGroupAsync(groupId, clientId);
+        }
+
+        public async Task RemoveClientFromGroupAsync(int groupId, int clientId)
+        {
+            var group = await _repo.GetGroupByIdAsync(groupId)
+                ?? throw new KeyNotFoundException($"Groupe {groupId} non trouvé");
+
+            if (group.GroupTypeId == 1 || group.GroupTypeId == 4)
+                throw new InvalidOperationException("Impossible de retirer un ATM manuellement d'un groupe dynamique.");
+
+            await _repo.RemoveClientFromGroupAsync(groupId, clientId);
+        }
 
         public async Task DeleteGroupAsync(int groupId)
         {

@@ -4,8 +4,8 @@ import { AuthService } from '../../core/services/auth.service';
 /**
  * Directive structurelle RBAC — usage :
  *
- *   <button *appHasRole="['Support_FullAccess']">Supprimer</button>
- *   <div *appHasRole="['Admin_ReadOnly', 'Support_FullAccess']">Lecture</div>
+ *   <button *appHasRole="['Support']">Supprimer</button>
+ *   <div *appHasRole="['Superviseur', 'Support']">Lecture</div>
  *
  * Masque l'élément si l'utilisateur n'appartient à AUCUN des rôles listés.
  */
@@ -46,3 +46,4 @@ export class HasRoleDirective {
     }
   }
 }
+

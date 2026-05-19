@@ -1,11 +1,13 @@
 using KtcWeb.Application.DTOs;
 using KtcWeb.Application.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace KtcWeb.API.Controllers
 {
     [ApiController]
     [Route("api/campaign")]
+    [Authorize(Policy = "RequireReadOnly")]
     public class CampaignController(ICampaignService campaignService) : ControllerBase
     {
         [HttpGet]
@@ -78,6 +80,37 @@ namespace KtcWeb.API.Controllers
         {
             var counts = await campaignService.GetCampaignShownCountsAsync(campaignId);
             return Ok(counts);
+        }
+
+        // ── Marketing Control ───────────────────────────────────────────────────
+        [HttpGet("marketing/global")]
+        public async Task<ActionResult<object>> GetGlobalMarketingState()
+        {
+            var enabled = await campaignService.GetGlobalMarketingEnabledAsync();
+            return Ok(new { enabled });
+        }
+
+        [HttpPost("marketing/global")]
+        [Authorize(Policy = "RequireWrite")]
+        public async Task<ActionResult<object>> SetGlobalMarketingState([FromBody] SetMarketingStateRequest request)
+        {
+            var result = await campaignService.SetGlobalMarketingEnabledAsync(request.Enabled);
+            return Ok(new { enabled = result });
+        }
+
+        [HttpGet("marketing/business/{businessId}")]
+        public async Task<ActionResult<object>> GetBusinessMarketingState(int businessId)
+        {
+            var enabled = await campaignService.GetBusinessMarketingEnabledAsync(businessId);
+            return Ok(new { enabled });
+        }
+
+        [HttpPost("marketing/business/{businessId}")]
+        [Authorize(Policy = "RequireWrite")]
+        public async Task<ActionResult<object>> SetBusinessMarketingState(int businessId, [FromBody] SetMarketingStateRequest request)
+        {
+            var result = await campaignService.SetBusinessMarketingEnabledAsync(businessId, request.Enabled);
+            return Ok(new { enabled = result });
         }
     }
 }

@@ -6,11 +6,12 @@ import { takeUntil } from 'rxjs/operators';
 import { AtmService, ElectronicJournalEntryDto } from '../services/atm.service';
 import { AtmRealtimeService } from '../services/atm-realtime.service';
 import { ExportButtonComponent } from '../../../shared/components/export-button/export-button.component';
+import { ExportPdfButtonComponent } from '../../../shared/components/export-pdf-button/export-pdf-button.component';
 
 @Component({
   selector: 'app-atm-electronic-journal',
   standalone: true,
-  imports: [CommonModule, ExportButtonComponent],
+  imports: [CommonModule, ExportButtonComponent, ExportPdfButtonComponent],
   templateUrl: './atm-electronic-journal.component.html',
   styleUrls: ['./atm-electronic-journal.component.css']
 })

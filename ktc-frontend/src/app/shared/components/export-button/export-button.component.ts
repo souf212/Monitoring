@@ -12,7 +12,7 @@ import { ExportExcelService } from '../../../core/services/export-excel.service'
       [class.export-btn--disabled]="!data || data.length === 0"
       [disabled]="!data || data.length === 0"
       (click)="onExport()"
-      [title]="data?.length ? 'Exporter ' + data.length + ' ligne(s) en Excel' : 'Aucune donnée à exporter'"
+      [title]="data.length ? 'Exporter ' + data.length + ' ligne(s) en Excel' : 'Aucune donnée à exporter'"
     >
       <!-- Excel icon SVG -->
       <svg class="export-btn__icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -22,7 +22,7 @@ import { ExportExcelService } from '../../../core/services/export-excel.service'
         <path d="M10.5 16v-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
       <span class="export-btn__label">Export Excel</span>
-      @if (data?.length) {
+      @if (data.length) {
         <span class="export-btn__badge">{{ data.length }}</span>
       }
     </button>

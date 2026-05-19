@@ -4,6 +4,7 @@ import { Router, RouterModule } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { forkJoin } from 'rxjs';
 import { LayoutService } from '../../../core/services/layout.service';
+import { GroupService } from '../../../features/group/services/group.service';
 
 interface GroupDto {
   groupId: number;
@@ -63,6 +64,7 @@ export class SidebarComponent implements OnInit {
   loadingHierarchy   = signal(false);
 
   private router = inject(Router);
+  private readonly groupService = inject(GroupService);
 
   constructor(
     private http: HttpClient,
@@ -71,6 +73,11 @@ export class SidebarComponent implements OnInit {
 
   ngOnInit() {
     this.loadGroups();
+    this.groupService.groupModified$.subscribe(groupId => {
+      if (this.isGroupExpanded(groupId)) {
+        this.loadGroupClients(groupId);
+      }
+    });
   }
 
   setTab(tab: 'groups' | 'hierarchy') {

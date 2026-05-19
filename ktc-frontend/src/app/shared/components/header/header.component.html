@@ -34,11 +34,27 @@
       Administration
     </button>
 
-    <!-- Campagnes Marketing -->
-    <button class="nav-btn" [class.nav-btn--active]="isCampaignRoute()" (click)="goToCampaigns()"
-      title="Campagnes Marketing">
-      Campagnes
-    </button>
+    <!-- Configuration (avec sous-menu) -->
+    <div class="config-menu-wrapper" (mouseenter)="openConfigMenu()" (mouseleave)="closeConfigMenu()">
+ <button
+  class="nav-btn"
+  [class.nav-btn--active]="isConfigRoute()"
+  title="View">
+  Vue
+  <span class="nav-btn__chevron">&#8964;</span>
+</button>
+
+      <div class="config-dropdown" *ngIf="isConfigMenuOpen()">
+        <button class="config-dropdown-item" [class.active]="isCampaignRoute()" (click)="goToCampaigns()">
+          <span class="config-dropdown-icon">📣</span>
+          Campagnes marketing
+        </button>
+        <button class="config-dropdown-item" [class.active]="isTicketSearchRoute()" (click)="goToTicketSearch()">
+          <span class="config-dropdown-icon">🔎</span>
+          Ticket Search
+        </button>
+      </div>
+    </div>
 
     <!-- Thème sombre / clair -->
     <button class="nav-btn theme-toggle-btn" (click)="toggleTheme()" [attr.title]="themeLabel"

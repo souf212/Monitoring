@@ -38,7 +38,12 @@
             {{ row.fileTypeLabel ?? row.fileType }}
           </span>
         </td>
-        <td>{{ row.fileName ?? row.fileLocation }}</td>
+        <td>
+          <a class="upload-link" [href]="downloadUrl(row.actionId)" target="_blank" rel="noopener noreferrer">
+            {{ row.fileName ?? row.fileLocation }}
+          </a>
+          <span class="upload-hint">Cliquer pour ouvrir / télécharger</span>
+        </td>
         <td>
           <ng-container *ngIf="row.addedTime; else noDate">
             <span class="date-main">{{ row.addedTime | date:'dd/MM/yyyy' }}</span>

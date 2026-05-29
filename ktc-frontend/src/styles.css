@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=DM+Serif+Display&display=swap');
+
 /* Global Styles */
 
 * {
@@ -101,9 +103,7 @@ html.theme-light {
 
 html, body {
   height: 100%;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background: var(--bg);
@@ -398,6 +398,7 @@ html.theme-dark ::selection {
   color: var(--text) !important;
 }
 
+
 .theme-dark .remote-menu__item:hover,
 .theme-dark .nav-btn:hover,
 .theme-dark .tab-btn:hover,
@@ -408,4 +409,20 @@ html.theme-dark ::selection {
 .theme-dark .btn--secondary:hover {
   background: var(--hover-bg) !important;
   color: var(--text) !important;
+}
+
+/* ===== COHÉRENCE TYPOGRAPHIQUE — ATM REMOTE COMMANDS ===== */
+/* Force DM Sans sur le composant remote commands pour matcher le header */
+app-atm-remote-commands-menu,
+app-atm-remote-commands-menu *,
+app-atm-remote-commands-menu button,
+app-atm-remote-commands-menu [role="button"],
+app-atm-remote-commands-menu .remote-menu__trigger,
+app-atm-remote-commands-menu .remote-menu__item,
+app-atm-remote-commands-menu .remote-menu__item--sub {
+  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif !important;
+  font-size: 13px !important;
+  letter-spacing: 0.06em !important;
+  text-transform: uppercase !important;
+  font-weight: 400 !important;
 }

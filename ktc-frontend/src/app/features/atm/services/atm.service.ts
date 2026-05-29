@@ -75,6 +75,10 @@ export class AtmService {
     return this.http.get<AtmUploadDto[]>(`${this.BASE}/clients/${clientId}/uploads`);
   }
 
+  downloadUploadUrl(clientId: number, actionId: number): string {
+    return `${this.BASE}/clients/${clientId}/uploads/${actionId}/download`;
+  }
+
   createSchedule(body: CreateScheduleRequest): Observable<{ message: string }> {
     return this.http.post<{ message: string }>(`${this.BASE}/schedules`, body);
   }

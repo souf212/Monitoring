@@ -96,6 +96,25 @@
   flex-shrink: 0;
 }
 
+/* ── Upload link cell ── */
+.upload-link {
+  display: inline-block;
+  color: #0c447c;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.upload-link:hover {
+  text-decoration: underline;
+}
+
+.upload-hint {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--muted, #6b7280);
+  margin-top: 2px;
+}
+
 /* ── Date cell ── */
 .date-main {
   display: block;

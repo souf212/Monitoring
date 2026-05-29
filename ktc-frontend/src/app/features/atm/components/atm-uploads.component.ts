@@ -33,6 +33,11 @@ export class AtmUploadsComponent implements OnInit {
     this.loadUploads(id);
   }
 
+  downloadUrl(actionId: number): string {
+    const id = this.clientId();
+    return id != null ? this.atmService.downloadUploadUrl(id, actionId) : '#';
+  }
+
   private loadUploads(clientId: number): void {
     this.isLoading.set(true);
     this.error.set(null);

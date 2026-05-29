@@ -1,13 +1,14 @@
 using KtcWeb.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 
 namespace KtcWeb.API.Controllers
 {
     [ApiController]
     [Route("api/atm")]
     [Authorize(Policy = "RequireReadOnly")]
-    public class AtmController(IAtmApplicationService service) : ControllerBase
+    public class AtmController(IAtmApplicationService service, ILogger<AtmController> logger) : ControllerBase
     {
         // ── Video Journal ──────────────────────────────────────────────────────
 
@@ -289,6 +290,45 @@ namespace KtcWeb.API.Controllers
         [HttpGet("clients/{id}/uploads")]
         public async Task<ActionResult<List<AtmUploadDto>>> GetClientUploads(int id)
             => Ok(await service.GetClientUploadsAsync(id));
+
+        [HttpPost("clients/{id}/uploads")]
+        [Authorize(Policy = "RequireWrite")]
+        public async Task<ActionResult<UploadFileResultDto>> UploadClientFile(
+            int id,
+            IFormFile file,
+            [FromForm] byte fileType = 5,
+            [FromForm] string? comments = null)
+        {
+            if (file == null || file.Length == 0)
+                return BadRequest(new { message = "Aucun fichier n’a été envoyé." });
+
+            try
+            {
+                var result = await service.UploadClientFileAsync(id, file, fileType, comments);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "UploadClientFile failed for clientId={ClientId} fileType={FileType}", id, fileType);
+                return StatusCode(500, new
+                {
+                    message = ex.Message,
+                    inner   = ex.InnerException?.Message,
+                    type    = ex.GetType().Name,
+                    trace   = ex.StackTrace
+                });
+            }
+        }
+
+        [HttpGet("clients/{id}/uploads/{actionId}/download")]
+        public async Task<IActionResult> DownloadClientUpload(int id, long actionId)
+        {
+            var upload = await service.GetClientUploadFileAsync(id, actionId);
+            if (upload == null)
+                return NotFound(new { message = "Fichier introuvable pour cet ATM." });
+
+            return File(upload.Value.Data, "application/octet-stream", upload.Value.FileName);
+        }
 
         [HttpGet("command-types")]
         public async Task<ActionResult<List<RemoteCommandTypeDto>>> GetRemoteCommandTypes()

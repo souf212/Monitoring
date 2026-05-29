@@ -179,6 +179,19 @@ export class HeaderComponent implements OnDestroy {
     this.router.navigate(['/ticket-search']);
   }
 
+  goToDashboard() {
+    this.isConfigMenuOpen.set(false);
+    this.isProfileOpen.set(false);
+    this.router.navigate(['/dashboard']);
+  }
+
+  // Naviguer vers un panel spécifique du dashboard Grafana
+  goToDashboardPanel(panel: string): void {
+    this.isConfigMenuOpen.set(false);
+    this.isProfileOpen.set(false);
+    this.router.navigate(['/dashboard'], { queryParams: { panel } });
+  }
+
   isCampaignRoute(): boolean {
     return this.router.url.startsWith('/campaign');
   }
@@ -187,7 +200,11 @@ export class HeaderComponent implements OnDestroy {
     return this.router.url.startsWith('/ticket-search');
   }
 
+  isDashboardRoute(): boolean {
+    return this.router.url.startsWith('/dashboard');
+  }
+
   isConfigRoute(): boolean {
-    return this.isCampaignRoute() || this.isTicketSearchRoute();
+    return this.isCampaignRoute() || this.isTicketSearchRoute() || this.isDashboardRoute();
   }
 }

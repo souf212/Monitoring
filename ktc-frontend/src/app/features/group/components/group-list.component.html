@@ -9,7 +9,12 @@
     </div>
     <div class="head-actions">
       <button class="btn btn-primary" (click)="goCreate()">
-        <span class="btn-icon">＋</span> Nouveau groupe
+        <span class="btn-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+        </span>
+        Nouveau groupe
       </button>
     </div>
   </div>
@@ -24,13 +29,20 @@
 
   <!-- ── Toolbar ─────────────────────────────────────────────────────────── -->
   <div class="toolbar">
-    <input
-      class="search-input"
-      type="text"
-      placeholder="Rechercher par nom, description, ID…"
-      [ngModel]="searchQuery()"
-      (ngModelChange)="searchQuery.set($event)"
-    />
+    <div class="search-wrapper">
+      <span class="search-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+      </span>
+      <input
+        class="search-input"
+        type="text"
+        placeholder="Rechercher par nom, description, ID…"
+        [ngModel]="searchQuery()"
+        (ngModelChange)="searchQuery.set($event)"
+      />
+    </div>
   </div>
 
   <!-- ── Loading (Skeleton cards) ───────────────────────────────────────── -->
@@ -45,7 +57,13 @@
 
   <!-- ── Error ───────────────────────────────────────────────────────────── -->
   <div *ngIf="error() && !isLoading()" class="error-box">
-    <span>⚠️ {{ error() }}</span>
+    <span class="error-box__msg">
+      <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0">
+        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+        <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+      </svg>
+      {{ error() }}
+    </span>
     <button class="btn btn-secondary btn--sm" (click)="load()">Réessayer</button>
   </div>
 
@@ -66,7 +84,11 @@
     </div>
 
     <div *ngIf="filtered().length === 0" class="empty-state">
-      <div class="empty-icon">📂</div>
+      <div class="empty-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+        </svg>
+      </div>
       <p>Aucun groupe trouvé avec ces filtres</p>
     </div>
 
@@ -91,22 +113,47 @@
         <!-- Meta -->
         <div class="group-card__meta">
           <div class="meta-row">
-            <span class="meta-icon">🆔</span>
+            <span class="meta-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="2" width="20" height="8" rx="2" ry="2"/>
+                <rect x="2" y="14" width="20" height="8" rx="2" ry="2"/>
+                <line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/>
+              </svg>
+            </span>
             <span class="meta-label">ID</span>
             <span>#{{ g.groupId }}</span>
           </div>
           <div class="meta-row" *ngIf="g.groupDescription">
-            <span class="meta-icon">📝</span>
+            <span class="meta-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="17" y1="10" x2="3" y2="10"/>
+                <line x1="21" y1="6" x2="3" y2="6"/>
+                <line x1="21" y1="14" x2="3" y2="14"/>
+                <line x1="17" y1="18" x2="3" y2="18"/>
+              </svg>
+            </span>
             <span class="meta-label">Description</span>
             <span class="meta-truncate">{{ g.groupDescription }}</span>
           </div>
           <div class="meta-row" *ngIf="!g.groupDescription">
-            <span class="meta-icon">📝</span>
+            <span class="meta-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="17" y1="10" x2="3" y2="10"/>
+                <line x1="21" y1="6" x2="3" y2="6"/>
+                <line x1="21" y1="14" x2="3" y2="14"/>
+                <line x1="17" y1="18" x2="3" y2="18"/>
+              </svg>
+            </span>
             <span class="meta-label">Description</span>
             <span class="meta-empty">—</span>
           </div>
           <div class="meta-row">
-            <span class="meta-icon">⏱</span>
+            <span class="meta-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <polyline points="12 6 12 12 16 14"/>
+              </svg>
+            </span>
             <span class="meta-label">Intervalle</span>
             <code *ngIf="g.evaluationInterval">{{ g.evaluationInterval }} min</code>
             <span *ngIf="!g.evaluationInterval" class="meta-empty">—</span>
@@ -117,11 +164,21 @@
         <footer class="group-card__actions">
           <button class="icon-btn icon-btn--edit" title="Modifier"
             (click)="goEdit(g.groupId); $event.stopPropagation()">
-            ✏️ Modifier
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+            </svg>
+            Modifier
           </button>
           <button class="icon-btn icon-btn--del" title="Supprimer"
             (click)="confirmDelete(g); $event.stopPropagation()">
-            🗑 Supprimer
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="3 6 5 6 21 6"/>
+              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+              <path d="M10 11v6"/><path d="M14 11v6"/>
+              <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+            </svg>
+            Supprimer
           </button>
         </footer>
       </article>
@@ -155,21 +212,42 @@
                 {{ groupTypeLabel(selectedGroupDtl()!.groupTypeId) }}
               </span>
               <span *ngIf="selectedGroupDtl()!.evaluationInterval" class="meta-chip">
-                ⏱ {{ selectedGroupDtl()!.evaluationInterval }} min
+                <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                </svg>
+                {{ selectedGroupDtl()!.evaluationInterval }} min
               </span>
               <span *ngIf="selectedGroupDtl()!.includeMothballed" class="meta-chip meta-chip--warn">
-                ⚠ Inclut désactivés
+                <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                  <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+                Inclut désactivés
               </span>
             </div>
           </div>
           <div class="detail-panel__head-right">
             <button class="btn btn-secondary btn--sm" (click)="goEdit(selectedGroupDtl()!.groupId)">
-              ✏️ Modifier
+              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+              </svg>
+              Modifier
             </button>
             <button class="btn btn-danger btn--sm" (click)="confirmDelete(selectedGroupDtl()!)">
-              🗑 Supprimer
+              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="3 6 5 6 21 6"/>
+                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                <path d="M10 11v6"/><path d="M14 11v6"/>
+                <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+              </svg>
+              Supprimer
             </button>
-            <button class="btn-close" (click)="closeDetail()" title="Fermer">✕</button>
+            <button class="btn-close" (click)="closeDetail()" title="Fermer">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
           </div>
         </div>
 
@@ -265,7 +343,14 @@
                     {{ client.active ? 'Actif' : 'Inactif' }}
                   </span>
                   <button *ngIf="canEditMembership()" class="icon-btn icon-btn--del" title="Retirer"
-                    (click)="removeClientFromGroup(client.clientId)">🗑️</button>
+                    (click)="removeClientFromGroup(client.clientId)">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                      <polyline points="3 6 5 6 21 6"/>
+                      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                      <path d="M10 11v6"/><path d="M14 11v6"/>
+                      <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                    </svg>
+                  </button>
                 </div>
               </div>
             </div>
@@ -280,16 +365,20 @@
 
               <ng-container *ngIf="canEditMembership()">
                 <div class="search-box add-search">
-                <span class="search-icon">🔍</span>
-                <input
-                  class="search-input search-input--sm"
-                  type="text"
-                  placeholder="Rechercher un ATM…"
-                  [ngModel]="clientSearch()"
-                  (ngModelChange)="clientSearch.set($event)"
-                  (focus)="loadAvailableAtms()"
-                />
-              </div>
+                  <span class="search-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                    </svg>
+                  </span>
+                  <input
+                    class="search-input search-input--sm"
+                    type="text"
+                    placeholder="Rechercher un ATM…"
+                    [ngModel]="clientSearch()"
+                    (ngModelChange)="clientSearch.set($event)"
+                    (focus)="loadAvailableAtms()"
+                  />
+                </div>
 
               <div *ngIf="loadingAtms()" class="state-box state-box--compact">
                 <div class="spinner spinner--sm"></div>
@@ -326,7 +415,10 @@
                   (click)="addSelectedClients()"
                   [disabled]="isAddingBulk()"
                 >
-                  {{ isAddingBulk() ? '…' : '＋ Ajouter' }}
+                  <svg *ngIf="!isAddingBulk()" xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                  </svg>
+                  {{ isAddingBulk() ? '…' : 'Ajouter' }}
                 </button>
               </div>
               </ng-container>

@@ -46,13 +46,39 @@
 
       <div class="config-dropdown" *ngIf="isConfigMenuOpen()">
         <button class="config-dropdown-item" [class.active]="isCampaignRoute()" (click)="goToCampaigns()">
-          <span class="config-dropdown-icon">📣</span>
+          <span class="config-dropdown-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 11l19-9-9 19-2-8-8-2z"/>
+            </svg>
+          </span>
           Campagnes marketing
         </button>
         <button class="config-dropdown-item" [class.active]="isTicketSearchRoute()" (click)="goToTicketSearch()">
-          <span class="config-dropdown-icon">🔎</span>
+          <span class="config-dropdown-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+          </span>
           Ticket Search
         </button>
+        <div class="config-dropdown-item">
+          <span class="config-dropdown-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+            </svg>
+          </span>
+          Dashboard
+          <div class="sub-menu">
+            <button class="sub-menu-item" (click)="goToDashboardPanel('overallAvailability')">Overall Availability</button>
+            <button class="sub-menu-item" (click)="goToDashboardPanel('transactionAvailability')">Transaction Availability</button>
+            <button class="sub-menu-item" (click)="goToDashboardPanel('EtatCassetteparATM')">Etat Cassette par ATM</button>
+            <button class="sub-menu-item" (click)="goToDashboardPanel('AssetHistoryByATM')">AssetHistoryByATM</button>
+
+            <button class="sub-menu-item" (click)="goToDashboardPanel('deviceAvailability')">Device Availability</button>
+            <button class="sub-menu-item" (click)="goToDashboardPanel('transactions')">Transactions</button>
+            <button class="sub-menu-item" (click)="goToDashboardPanel('supervisorSessionLengths')">Supervisor Session Lengths</button>
+          </div>
+        </div>
       </div>
     </div>
 

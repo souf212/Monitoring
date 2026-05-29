@@ -1,6 +1,7 @@
 using KtcWeb.Application.DTOs;
 using KtcWeb.Application.Interfaces;
 using KtcWeb.Domain.Interfaces;
+using Microsoft.AspNetCore.Http;
 
 namespace KtcWeb.Application.Services
 {
@@ -52,6 +53,11 @@ namespace KtcWeb.Application.Services
             _atmRepository.GetClientActionsAsync(clientId, from, to, days, addedByUser);
 
         public Task<List<AtmUploadDto>> GetClientUploadsAsync(int clientId) => _atmRepository.GetClientUploadsAsync(clientId);
+        public Task<UploadFileResultDto> UploadClientFileAsync(int clientId, IFormFile file, byte fileType, string? comments)
+            => _atmRepository.UploadClientFileAsync(clientId, file, fileType, comments);
+
+        public Task<(byte[] Data, string FileName)?> GetClientUploadFileAsync(int clientId, long actionId)
+            => _atmRepository.GetClientUploadFileAsync(clientId, actionId);
 
         public Task<List<AtmScheduleDto>> GetClientSchedulesAsync(int clientId) => _atmRepository.GetClientSchedulesAsync(clientId);
         public Task CreateScheduleAsync(CreateScheduleRequest request) => _atmRepository.CreateScheduleAsync(request);

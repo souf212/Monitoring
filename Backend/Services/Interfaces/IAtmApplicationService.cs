@@ -1,4 +1,5 @@
 using KtcWeb.Application.DTOs;
+using Microsoft.AspNetCore.Http;
 
 namespace KtcWeb.Application.Interfaces
 {
@@ -39,6 +40,8 @@ namespace KtcWeb.Application.Interfaces
         Task<XfsCountersResponseDto> GetXfsCountersAsync(int clientId, short componentId);
         Task<AtmActionsResponseDto> GetClientActionsAsync(int clientId, DateTime? from, DateTime? to, int? days, string? addedByUser);
         Task<List<AtmUploadDto>> GetClientUploadsAsync(int clientId);
+        Task<UploadFileResultDto> UploadClientFileAsync(int clientId, IFormFile file, byte fileType, string? comments);
+        Task<(byte[] Data, string FileName)?> GetClientUploadFileAsync(int clientId, long actionId);
         Task<List<AtmScheduleDto>> GetClientSchedulesAsync(int clientId);
         Task CreateScheduleAsync(CreateScheduleRequest request);
         Task<List<RemoteCommandTypeDto>> GetRemoteCommandTypesAsync();

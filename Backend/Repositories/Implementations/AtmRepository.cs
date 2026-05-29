@@ -1,6 +1,8 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Data.SqlClient;
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Xml.Linq;
@@ -364,6 +366,115 @@ namespace KtcWeb.Infrastructure.Repositories
                 Items = visible.Take(500).ToList(),
                 AddedByUsers = distinctUsers
             };
+        }
+
+        private static string BuildUploadFolder(int clientId) =>
+            Path.Combine(Directory.GetCurrentDirectory(), "Uploads", clientId.ToString("D"));
+
+        private sealed class UploadFileRecord
+        {
+            public string FileLocation { get; set; } = string.Empty;
+        }
+
+        public async Task<UploadFileResultDto> UploadClientFileAsync(int clientId, IFormFile file, byte fileType, string? comments)
+        {
+            if (file == null || file.Length == 0)
+                throw new ArgumentException("Aucun fichier n’a été fourni.", nameof(file));
+
+            var uploadFolder = BuildUploadFolder(clientId);
+            Directory.CreateDirectory(uploadFolder);
+
+            var safeName = Path.GetFileName(file.FileName);
+            var uniqueName = $"{DateTime.UtcNow:yyyyMMddHHmmssfff}_{Guid.NewGuid():N}_{safeName}";
+            var fullPath = Path.Combine(uploadFolder, uniqueName);
+
+            await using (var stream = new FileStream(fullPath, FileMode.Create, FileAccess.Write, FileShare.None))
+            {
+                await file.CopyToAsync(stream);
+            }
+
+            await using var connection = new SqlConnection(_context.Database.GetConnectionString());
+            await connection.OpenAsync();
+
+            await using var transaction = await connection.BeginTransactionAsync();
+            try
+            {
+                await using var actionCommand = connection.CreateCommand();
+                actionCommand.Transaction = (SqlTransaction)transaction;
+                actionCommand.CommandText = @"
+                    INSERT INTO dbo.Actions (
+                        dependant_id, isendofchain, client_id, schedule_id, command_id,
+                        commandparams, starttime, endtime, status_id, comments,
+                        addedtime, retrycount, restarttime, result, progress_percent)
+                    VALUES (
+                        0, CAST(1 AS bit), @clientId, 0, @commandId,
+                        CAST(N'<params />' AS xml), NULL, NULL, @statusId, CONVERT(xml, @comments),
+                        GETUTCDATE(), 0, NULL, CAST(N'<result />' AS xml), 0);
+                    SELECT CAST(SCOPE_IDENTITY() AS bigint);";
+                actionCommand.Parameters.Add(new SqlParameter("@clientId", SqlDbType.Int) { Value = clientId });
+                // command_id résolu selon le type de fichier uploadé (fileType)
+                byte resolvedCommandId = fileType switch
+                {
+                    1 => 14,  // Upload trace
+                    2 => 17,  // Upload EJ
+                    3 => 31,  // Upload EventLog
+                    4 => 33,  // Upload Registry
+                    5 => 58,  // Upload Screenshot
+                    6 => 41,  // Upload Trace Backup
+                    _ => 3    // KTC_UPLOAD_FILE (default)
+                };
+                actionCommand.Parameters.Add(new SqlParameter("@commandId", SqlDbType.TinyInt) { Value = resolvedCommandId });
+                actionCommand.Parameters.Add(new SqlParameter("@statusId", SqlDbType.TinyInt) { Value = (byte)3 });
+                var commentXml = $"<Comment User=\"API\" TimeUtc=\"{DateTime.UtcNow:o}\">{System.Security.SecurityElement.Escape(string.IsNullOrWhiteSpace(comments) ? "Upload via API" : comments)}</Comment>";
+                actionCommand.Parameters.Add(new SqlParameter("@comments", SqlDbType.NVarChar, -1) { Value = commentXml });
+
+                var actionIdObj = await actionCommand.ExecuteScalarAsync();
+                var actionId = Convert.ToInt64(actionIdObj ?? 0L);
+
+                await using var uploadCommand = connection.CreateCommand();
+                uploadCommand.Transaction = (SqlTransaction)transaction;
+                uploadCommand.CommandText = @"
+                    INSERT INTO dbo.Uploads (client_id, action_id, filelocation, filetype)
+                    VALUES (@clientId, @actionId, @fileLocation, @fileType);";
+                uploadCommand.Parameters.Add(new SqlParameter("@clientId", SqlDbType.Int) { Value = clientId });
+                uploadCommand.Parameters.Add(new SqlParameter("@actionId", SqlDbType.BigInt) { Value = actionId });
+                uploadCommand.Parameters.Add(new SqlParameter("@fileLocation", SqlDbType.NVarChar, 4000) { Value = fullPath });
+                uploadCommand.Parameters.Add(new SqlParameter("@fileType", SqlDbType.TinyInt) { Value = fileType });
+                await uploadCommand.ExecuteNonQueryAsync();
+
+                await transaction.CommitAsync();
+
+                return new UploadFileResultDto
+                {
+                    ActionId = actionId,
+                    FileName = safeName,
+                    FileLocation = fullPath,
+                    FileType = fileType,
+                    Message = "Fichier enregistré avec succès."
+                };
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                if (File.Exists(fullPath))
+                    File.Delete(fullPath);
+                throw;
+            }
+        }
+
+        public async Task<(byte[] Data, string FileName)?> GetClientUploadFileAsync(int clientId, long actionId)
+        {
+            var row = await _context.Database.SqlQueryRaw<UploadFileRecord>(@"
+                SELECT u.filelocation AS FileLocation
+                FROM dbo.Uploads u
+                WHERE u.client_id = {0}
+                  AND u.action_id = {1}", clientId, actionId).FirstOrDefaultAsync();
+
+            if (row == null || string.IsNullOrWhiteSpace(row.FileLocation) || !File.Exists(row.FileLocation))
+                return null;
+
+            var bytes = await File.ReadAllBytesAsync(row.FileLocation);
+            return (bytes, Path.GetFileName(row.FileLocation));
         }
 
         public async Task<List<AtmUploadDto>> GetClientUploadsAsync(int clientId)

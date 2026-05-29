@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using KtcWeb.Application.DTOs;
+using Microsoft.AspNetCore.Http;
 
 namespace KtcWeb.Domain.Interfaces
 {
@@ -22,6 +23,8 @@ namespace KtcWeb.Domain.Interfaces
         Task CreateScheduleAsync(CreateScheduleRequest request);
         Task<List<RemoteCommandTypeDto>> GetRemoteCommandTypesAsync();
         Task<DispatchRemoteActionsResponse> DispatchRemoteActionsAsync(byte commandId, IReadOnlyList<int> clientIds, string? initiatedBy);
+        Task<UploadFileResultDto> UploadClientFileAsync(int clientId, IFormFile file, byte fileType, string? comments);
+        Task<(byte[] Data, string FileName)?> GetClientUploadFileAsync(int clientId, long actionId);
         Task<List<ElectronicJournalEntryDto>> GetElectronicJournalAsync(int clientId, DateTime from, DateTime to);
         Task<List<LookupItemDto>> GetTransactionTypeLookupsAsync();
         Task<List<LookupItemDto>> GetTransactionReasonLookupsAsync();

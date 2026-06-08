@@ -1,6 +1,3 @@
-<<<<<<< HEAD
-"# monitoring_v1.1" 
-=======
 # KTC Monitoring — ATM Network Management Platform
 
 A full-stack web application for real-time monitoring and management of ATM networks, built for banking operations teams.
@@ -85,5 +82,4 @@ npm start
 Users authenticate via Active Directory credentials. The API issues a JWT token scoped to one of two roles:
 
 - **Superviseur** — read-only access across the platform
-- **Support** — full read/write access including remote commands and configuration
->>>>>>> 190714e (readme)
+- **Support** — full read/write access including remote commands and configuration 

@@ -77,6 +77,46 @@ npm start
 # App available at http://localhost:4200
 ```
 
+## Testing
+
+### Backend — Integration Tests
+
+The `Backend.IntegrationTests` project uses **xUnit** and `Microsoft.AspNetCore.Mvc.Testing` to spin up the real ASP.NET Core pipeline in memory against the development database.
+
+**How it works**
+
+- `KtcWebFactory` — a custom `WebApplicationFactory<Program>` that:
+  - Replaces JWT authentication with a `TestAuthHandler` that auto-authenticates every request as a **Support** user (full access)
+  - Removes `IHostedService` registrations so `SqlTableDependency` background listeners don't start during tests
+  - Inherits the connection string from `appsettings.Development.json` (real database, read-only queries only)
+
+**Test suites**
+
+| File | What it covers |
+|---|---|
+| `AtmReadTests` | GET endpoints for clients, regions, businesses, hardware types, command types, transaction lookups |
+| `CampaignReadTests` | GET list / GET by id / 404 on unknown id for campaigns |
+| `GroupReadTests` | GET list / GET by id / 404 on unknown id for groups |
+| `MiddlewareTests` | Validation middleware — empty-name payloads return 400 for campaign and group creation |
+
+**Run the tests**
+
+```bash
+cd Backend.IntegrationTests
+dotnet test
+```
+
+> Requires a reachable SQL Server instance with the KTC database (same connection string used for local development).
+
+### Frontend — Unit Tests
+
+Vitest is available as a dev dependency. No spec files exist yet — the setup is in place for future unit tests.
+
+```bash
+cd ktc-frontend
+npm test
+```
+
 ## Authentication
 
 Users authenticate via Active Directory credentials. The API issues a JWT token scoped to one of two roles:

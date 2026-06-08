@@ -37,18 +37,21 @@ KTC Monitoring centralizes ATM supervision into a single platform: live status t
 
 ```
 Monitoring-main/
-├── Backend/                  # ASP.NET Core Web API
-│   ├── Controllers/          # REST endpoints
-│   ├── Services/             # Business logic
-│   ├── Repositories/         # Data access layer
-│   ├── Hubs/                 # SignalR hub
-│   ├── Infrastructure/       # DB context, background listeners
-│   └── DTOs/ Models/         # Data contracts
-└── ktc-frontend/             # Angular SPA
+├── Backend/                        # ASP.NET Core Web API
+│   ├── Controllers/                # REST endpoints
+│   ├── Services/                   # Business logic
+│   ├── Repositories/               # Data access layer
+│   ├── Hubs/                       # SignalR hub
+│   ├── Infrastructure/             # DB context, background listeners
+│   └── DTOs/ Models/               # Data contracts
+├── Backend.IntegrationTests/       # xUnit integration tests (in-memory test server)
+│   ├── Fixtures/                   # KtcWebFactory — WebApplicationFactory setup
+│   └── Tests/                      # AtmReadTests, CampaignReadTests, GroupReadTests, MiddlewareTests
+└── ktc-frontend/                   # Angular SPA
     └── src/app/
-        ├── features/         # Feature modules (atm, dashboard, campaign, …)
-        ├── core/             # Auth, guards, interceptors, SignalR service
-        └── shared/           # Reusable components, directives
+        ├── features/               # Feature modules (atm, dashboard, campaign, …)
+        ├── core/                   # Auth, guards, interceptors, SignalR service
+        └── shared/                 # Reusable components, directives
 ```
 
 ## Getting Started
